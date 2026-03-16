@@ -1,8 +1,9 @@
-from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, 
+from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QGridLayout, 
                                QHBoxLayout, QTableWidget, QTableWidgetItem, 
-                               QPushButton, QLabel, QLineEdit, QDateEdit, 
+                               QPushButton, QLabel, QLineEdit, QDateEdit, QListWidgetItem, 
                                QMessageBox, QHeaderView, QStatusBar, QGroupBox, QListWidget)
 from PySide6.QtCore import Qt, QDate
+from PySide6.QtGui import QIcon
 from app.models.item_manager import ItemManager
 from app.utils.path_utils import get_main_style_path
 
@@ -40,6 +41,8 @@ class MainWindow(QMainWindow):
         """
         self.setWindowTitle('记录管理器')
         self.setGeometry(100, 100, 1000, 750)
+        # 设置最小尺寸
+        self.setMinimumSize(800, 600)
         
         # 创建中央部件
         central_widget = QWidget()
@@ -50,22 +53,43 @@ class MainWindow(QMainWindow):
         
         # 创建导航侧边栏
         nav_widget = QWidget()
-        nav_widget.setFixedWidth(200)
+        nav_widget.setFixedWidth(220)
         nav_layout = QVBoxLayout(nav_widget)
-        nav_layout.setSpacing(10)
-        nav_layout.setContentsMargins(10, 10, 10, 10)
+        nav_layout.setSpacing(0)
+        nav_layout.setContentsMargins(0, 0, 0, 0)
+        
+        # 导航标题区域
+        nav_header = QWidget()
+        nav_header.setObjectName("navHeader")
+        nav_header_layout = QVBoxLayout(nav_header)
+        nav_header_layout.setContentsMargins(20, 20, 20, 20)
         
         # 导航标题
         nav_title = QLabel('记录管理')
-        nav_title.setStyleSheet("font-size: 18px; font-weight: bold; color: #333; margin-bottom: 10px;")
-        nav_layout.addWidget(nav_title)
+        nav_title.setObjectName("navTitle")
+        nav_header_layout.addWidget(nav_title)
+        
+        # 导航副标题
+        nav_subtitle = QLabel('资产管理系统')
+        nav_subtitle.setObjectName("navSubtitle")
+        nav_header_layout.addWidget(nav_subtitle)
+        
+        nav_layout.addWidget(nav_header)
         
         # 导航列表
         self.nav_list = QListWidget()
-        self.nav_list.addItem('物品记录管理')
+        self.nav_list.setStyleSheet("QListWidget { border-radius: 0 0 8px 8px; }")
+        
+        # 添加导航项
+        item1 = QListWidgetItem('物品记录管理')
+        self.nav_list.addItem(item1)
+        
         # 预留其他记录管理功能的入口
-        # self.nav_list.addItem('其他记录管理1')
-        # self.nav_list.addItem('其他记录管理2')
+        # item2 = QListWidgetItem('其他记录管理1')
+        # self.nav_list.addItem(item2)
+        # item3 = QListWidgetItem('其他记录管理2')
+        # self.nav_list.addItem(item3)
+        
         self.nav_list.setCurrentRow(0)
         self.nav_list.itemClicked.connect(self.switch_view)
         nav_layout.addWidget(self.nav_list)
@@ -73,13 +97,24 @@ class MainWindow(QMainWindow):
         # 内容区域
         content_widget = QWidget()
         self.content_layout = QVBoxLayout(content_widget)
-        self.content_layout.setSpacing(15)
-        self.content_layout.setContentsMargins(20, 20, 20, 20)
+        self.content_layout.setSpacing(10)
+        self.content_layout.setContentsMargins(20, 0, 20, 0)
         
         # 创建状态栏
         self.statusBar = QStatusBar()
         self.setStatusBar(self.statusBar)
-        self.statusBar.showMessage('就绪')
+        
+        # 创建状态栏标签
+        self.status_label = QLabel('就绪')
+        self.status_label.setStyleSheet("font-size: 13px; color: #666666;")
+        
+        # 创建物品数量标签
+        self.item_count_status = QLabel('物品数量: 0')
+        self.item_count_status.setStyleSheet("font-size: 13px; color: #666666; margin-left: 20px;")
+        
+        # 添加标签到状态栏
+        self.statusBar.addWidget(self.status_label)
+        self.statusBar.addPermanentWidget(self.item_count_status)
         
         # 创建物品记录管理视图
         self.create_item_management_view()
@@ -104,57 +139,103 @@ class MainWindow(QMainWindow):
         # 创建统计信息区域
         stats_group = QGroupBox('统计信息')
         stats_layout = QHBoxLayout()
-        stats_layout.setSpacing(20)
+        stats_layout.setSpacing(15)
+        stats_layout.setContentsMargins(15, 15, 15, 15)
         
-        # 总资产标签
-        self.total_assets_label = QLabel('总资产: ¥0.00')
-        self.total_assets_label.setStyleSheet("font-weight: bold; font-size: 16px; color: #333;")
+        # 总资产卡片
+        total_assets_card = QWidget()
+        total_assets_card.setObjectName("totalAssetsCard")
+        total_assets_layout = QHBoxLayout(total_assets_card)
+        total_assets_layout.setContentsMargins(16, 16, 16, 16)
+        total_assets_layout.setSpacing(10)
         
-        # 日均总成本标签
-        self.daily_cost_label = QLabel('日均总成本: ¥0.00')
-        self.daily_cost_label.setStyleSheet("font-weight: bold; font-size: 16px; color: #333;")
+        total_assets_title = QLabel('总资产')
+        total_assets_title.setObjectName("statsCardTitle")
+        self.total_assets_label = QLabel('¥0.00')
+        self.total_assets_label.setObjectName("totalAssetsValue")
         
-        # 物品数量标签
-        self.item_count_label = QLabel('物品数量: 0')
-        self.item_count_label.setStyleSheet("font-weight: bold; font-size: 16px; color: #333;")
+        total_assets_layout.addWidget(total_assets_title)
+        total_assets_layout.addWidget(self.total_assets_label)
+        total_assets_layout.addStretch(1)
         
-        stats_layout.addWidget(self.total_assets_label)
-        stats_layout.addWidget(self.daily_cost_label)
-        stats_layout.addWidget(self.item_count_label)
+        # 日均总成本卡片
+        daily_cost_card = QWidget()
+        daily_cost_card.setObjectName("dailyCostCard")
+        daily_cost_layout = QHBoxLayout(daily_cost_card)
+        daily_cost_layout.setContentsMargins(16, 16, 16, 16)
+        daily_cost_layout.setSpacing(10)
+        
+        daily_cost_title = QLabel('日均总成本')
+        daily_cost_title.setObjectName("statsCardTitle")
+        self.daily_cost_label = QLabel('¥0.00')
+        self.daily_cost_label.setObjectName("dailyCostValue")
+        
+        daily_cost_layout.addWidget(daily_cost_title)
+        daily_cost_layout.addWidget(self.daily_cost_label)
+        daily_cost_layout.addStretch(1)
+        
+        # 物品数量卡片
+        item_count_card = QWidget()
+        item_count_card.setObjectName("itemCountCard")
+        item_count_layout = QHBoxLayout(item_count_card)
+        item_count_layout.setContentsMargins(16, 16, 16, 16)
+        item_count_layout.setSpacing(10)
+        
+        item_count_title = QLabel('物品数量')
+        item_count_title.setObjectName("statsCardTitle")
+        self.item_count_label = QLabel('0')
+        self.item_count_label.setObjectName("itemCountValue")
+        
+        item_count_layout.addWidget(item_count_title)
+        item_count_layout.addWidget(self.item_count_label)
+        item_count_layout.addStretch(1)
+        
+        # 将卡片添加到布局
+        stats_layout.addWidget(total_assets_card, 1)
+        stats_layout.addWidget(daily_cost_card, 1)
+        stats_layout.addWidget(item_count_card, 1)
         stats_group.setLayout(stats_layout)
+        
+        # 创建输入和搜索区域的水平布局
+        input_search_layout = QHBoxLayout()
+        input_search_layout.setSpacing(15)
         
         # 创建输入区域
         input_group = QGroupBox('添加物品')
-        input_layout = QHBoxLayout()
-        input_layout.setSpacing(15)
+        input_layout = QGridLayout()
+        input_layout.setSpacing(10)
+        input_layout.setContentsMargins(15, 15, 15, 15)
         
         # 物品名称输入
         name_label = QLabel('物品名称:')
+        name_label.setObjectName("inputLabel")
         self.name_input = QLineEdit()
         self.name_input.setPlaceholderText('请输入物品名称')
-        input_layout.addWidget(name_label)
-        input_layout.addWidget(self.name_input)
+        input_layout.addWidget(name_label, 0, 0, 1, 1)
+        input_layout.addWidget(self.name_input, 0, 1, 1, 2)
         
         # 购买价格输入
         price_label = QLabel('购买价格:')
+        price_label.setObjectName("inputLabel")
         self.price_input = QLineEdit()
         self.price_input.setPlaceholderText('请输入购买价格')
-        input_layout.addWidget(price_label)
-        input_layout.addWidget(self.price_input)
+        input_layout.addWidget(price_label, 0, 3, 1, 1)
+        input_layout.addWidget(self.price_input, 0, 4, 1, 1)
         
         # 购买日期输入（使用日期选择器）
         date_label = QLabel('购买日期:')
+        date_label.setObjectName("inputLabel")
         self.date_input = QDateEdit()
         self.date_input.setDate(QDate.currentDate())  # 默认为当前日期
         self.date_input.setDisplayFormat('yyyy-MM-dd')  # 设置日期显示格式
-        input_layout.addWidget(date_label)
-        input_layout.addWidget(self.date_input)
+        input_layout.addWidget(date_label, 0, 5, 1, 1)
+        input_layout.addWidget(self.date_input, 0, 6, 1, 1)
         
         # 添加按钮
         self.add_button = QPushButton('添加物品')
         self.add_button.setObjectName("addButton")
         self.add_button.clicked.connect(self.add_item)  # 连接添加物品函数
-        input_layout.addWidget(self.add_button)
+        input_layout.addWidget(self.add_button, 0, 7, 1, 1)
         
         input_group.setLayout(input_layout)
         
@@ -162,8 +243,10 @@ class MainWindow(QMainWindow):
         search_group = QGroupBox('搜索')
         search_layout = QHBoxLayout()
         search_layout.setSpacing(10)
+        search_layout.setContentsMargins(15, 15, 15, 15)
         
         search_label = QLabel('搜索:')
+        search_label.setObjectName("inputLabel")
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText('输入物品名称进行搜索')
         self.search_input.textChanged.connect(self.search_items)
@@ -171,6 +254,10 @@ class MainWindow(QMainWindow):
         search_layout.addWidget(search_label)
         search_layout.addWidget(self.search_input)
         search_group.setLayout(search_layout)
+        
+        # 将输入和搜索区域添加到水平布局
+        input_search_layout.addWidget(input_group, 3)
+        input_search_layout.addWidget(search_group, 1)
         
         # 创建表格用于显示物品列表
         table_group = QGroupBox('物品列表')
@@ -187,14 +274,20 @@ class MainWindow(QMainWindow):
         header.setSectionResizeMode(2, QHeaderView.ResizeToContents)  # 日期列根据内容调整
         header.setSectionResizeMode(3, QHeaderView.ResizeToContents)  # 使用天数列根据内容调整
         header.setSectionResizeMode(4, QHeaderView.ResizeToContents)  # 日均价格列根据内容调整
-        header.setSectionResizeMode(5, QHeaderView.ResizeToContents)  # 操作列根据内容调整
+        header.setSectionResizeMode(5, QHeaderView.Fixed)  # 操作列使用固定宽度
+        self.table.setColumnWidth(5, 160)  # 设置操作列宽度为160px
         
-        # 表格样式已在 QSS 文件中定义
+        # 设置表格行高
+        self.table.verticalHeader().setDefaultSectionSize(50)
+        # 隐藏垂直表头
+        self.table.verticalHeader().setVisible(False)
         
         # 启用排序
         self.table.setSortingEnabled(True)
         # 禁用编辑功能
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
+        # 启用交替行颜色
+        self.table.setAlternatingRowColors(True)
         
         # 连接单元格点击信号
         self.table.cellClicked.connect(self.handle_cell_click)
@@ -211,9 +304,12 @@ class MainWindow(QMainWindow):
         
         # 将各组件添加到内容布局
         self.content_layout.addWidget(stats_group)
-        self.content_layout.addWidget(input_group)
-        self.content_layout.addWidget(search_group)
-        self.content_layout.addWidget(table_group)
+        # 添加输入和搜索的水平布局
+        self.content_layout.addLayout(input_search_layout)
+        # 为表格添加伸展因子，使其能够根据窗口大小自动调整高度
+        self.content_layout.addWidget(table_group, 1)
+        # 移除多余的拉伸因子，避免底部空间浪费
+        # self.content_layout.addStretch(1)
     
     def switch_view(self, item):
         """
@@ -357,14 +453,12 @@ class MainWindow(QMainWindow):
             # 修改按钮
             edit_btn = QPushButton('修改')
             edit_btn.setObjectName("editButton")
-            edit_btn.setFixedWidth(70)
             edit_btn.clicked.connect(lambda _, r=row: self.edit_item(r))
             button_layout.addWidget(edit_btn)
             
             # 删除按钮
             delete_btn = QPushButton('删除')
             delete_btn.setObjectName("deleteButton")
-            delete_btn.setFixedWidth(70)
             delete_btn.clicked.connect(lambda _, r=row: self.delete_item(r))
             button_layout.addWidget(delete_btn)
             
@@ -417,9 +511,12 @@ class MainWindow(QMainWindow):
         item_count = len(self.item_manager.get_items())
         
         # 更新标签显示
-        self.total_assets_label.setText(f'总资产: ¥{total_assets:.2f}')
-        self.daily_cost_label.setText(f'日均总成本: ¥{average_daily_cost:.2f}')
-        self.item_count_label.setText(f'物品数量: {item_count}')
+        self.total_assets_label.setText(f'¥{total_assets:.2f}')
+        self.daily_cost_label.setText(f'¥{average_daily_cost:.2f}')
+        self.item_count_label.setText(f'{item_count}')
+        
+        # 更新状态栏物品数量
+        self.item_count_status.setText(f'物品数量: {item_count}')
     
     def search_items(self):
         """
@@ -478,7 +575,6 @@ class MainWindow(QMainWindow):
             # 修改按钮
             edit_btn = QPushButton('修改')
             edit_btn.setObjectName("editButton")
-            edit_btn.setFixedWidth(70)
             # 查找原索引
             original_index = items.index(item)
             edit_btn.clicked.connect(lambda _, r=original_index: self.edit_item(r))
@@ -487,7 +583,6 @@ class MainWindow(QMainWindow):
             # 删除按钮
             delete_btn = QPushButton('删除')
             delete_btn.setObjectName("deleteButton")
-            delete_btn.setFixedWidth(70)
             delete_btn.clicked.connect(lambda _, r=original_index: self.delete_item(r))
             button_layout.addWidget(delete_btn)
             

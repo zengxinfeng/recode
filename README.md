@@ -13,7 +13,7 @@
 ## 目录结构
 
 ```
-item_recode/
+recode/
 ├── app/                      # 主应用目录
 │   ├── __init__.py
 │   ├── main.py               # 应用入口
@@ -74,7 +74,7 @@ item_recode/
 
 ## 数据存储
 
-应用会将数据自动保存到 `app/resources/items.json` 文件中，确保数据不会丢失。
+应用会将数据自动保存到 `app/resources/datas/items.json` 文件中，确保数据不会丢失。
 
 ## 未来计划
 
@@ -82,3 +82,4 @@ item_recode/
 - 支持数据导出和导入
 - 增加图表统计功能
 - 优化用户界面设计
+
