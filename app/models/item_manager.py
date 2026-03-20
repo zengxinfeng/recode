@@ -1,135 +1,173 @@
-from PySide6.QtCore import QDate
+"""
+物品管理模块。
+
+负责物品数据的存储、加载、添加、删除和计算功能。
+"""
+
 import json
+from pathlib import Path
+from typing import Any
+
+from PySide6.QtCore import QDate
+
 from app.utils.path_utils import get_items_file_path
+
 
 class ItemManager:
     """
-    物品管理类，负责数据的存储、加载、添加、删除和计算
+    物品管理类，负责数据的存储、加载、添加、删除和计算。
+
+    Attributes:
+        items: 物品列表，每个物品为包含名称、价格和购买日期的字典。
+        save_path: 数据文件的保存路径。
     """
-    def __init__(self):
-        # 初始化物品列表
-        self.items = []
-        # 使用路径管理工具获取保存路径，确保跨平台兼容性
-        self.save_path = get_items_file_path()
-        # 确保资源目录存在
+
+    def __init__(self) -> None:
+        """
+        初始化物品管理器。
+
+        设置保存路径，确保目录存在，并加载已保存的数据。
+        """
+        self.items: list[dict[str, Any]] = []
+        self.save_path: Path = get_items_file_path()
         self.save_path.parent.mkdir(parents=True, exist_ok=True)
-        # 加载已保存的数据
         self.load_data()
-    
-    def load_data(self):
+
+    def load_data(self) -> None:
         """
-        从本地文件加载物品数据
+        从本地文件加载物品数据。
+
+        如果文件不存在或读取失败，初始化为空列表。
         """
-        if self.save_path.exists():
-            try:
-                with open(self.save_path, 'r', encoding='utf-8') as f:
-                    self.items = json.load(f)
-            except:
-                # 如果读取失败，初始化为空列表
-                self.items = []
-        else:
-            # 如果文件不存在，初始化为空列表
+        if not self.save_path.exists():
             self.items = []
-    
-    def save_data(self):
+            return
+
+        try:
+            with open(self.save_path, 'r', encoding='utf-8') as f:
+                self.items = json.load(f)
+        except (json.JSONDecodeError, OSError):
+            self.items = []
+
+    def save_data(self) -> None:
         """
-        将物品数据保存到本地文件
+        将物品数据保存到本地文件。
         """
         with open(self.save_path, 'w', encoding='utf-8') as f:
             json.dump(self.items, f, ensure_ascii=False, indent=2)
-    
-    def add_item(self, name, price, purchase_date):
+
+    def add_item(self, name: str, price: float, purchase_date: QDate) -> None:
         """
-        添加新物品到列表
-        :param name: 物品名称
-        :param price: 购买价格
-        :param purchase_date: 购买日期（QDate对象）
+        添加新物品到列表。
+
+        Args:
+            name: 物品名称。
+            price: 购买价格。
+            purchase_date: 购买日期（QDate 对象）。
         """
         item = {
             'name': name,
-            'price': float(price),  # 价格转换为浮点数
-            'purchase_date': purchase_date.toString('yyyy-MM-dd')  # 日期转字符串格式
+            'price': float(price),
+            'purchase_date': purchase_date.toString('yyyy-MM-dd'),
         }
         self.items.append(item)
-        self.save_data()  # 添加后立即保存到文件
-    
-    def remove_item(self, index):
+        self.save_data()
+
+    def remove_item(self, index: int) -> None:
         """
-        根据索引删除物品
-        :param index: 要删除的物品索引
+        根据索引删除物品。
+
+        Args:
+            index: 要删除的物品索引。
         """
         if 0 <= index < len(self.items):
             del self.items[index]
-            self.save_data()  # 删除后保存数据
-    
-    def update_item(self, index, name, price, purchase_date):
+            self.save_data()
+
+    def update_item(
+        self, index: int, name: str, price: float, purchase_date: QDate
+    ) -> None:
         """
-        根据索引更新物品信息
-        :param index: 要更新的物品索引
-        :param name: 新的物品名称
-        :param price: 新的购买价格
-        :param purchase_date: 新的购买日期（QDate对象）
+        根据索引更新物品信息。
+
+        Args:
+            index: 要更新的物品索引。
+            name: 新的物品名称。
+            price: 新的购买价格。
+            purchase_date: 新的购买日期（QDate 对象）。
         """
         if 0 <= index < len(self.items):
             self.items[index] = {
                 'name': name,
-                'price': float(price),  # 价格转换为浮点数
-                'purchase_date': purchase_date.toString('yyyy-MM-dd')  # 日期转字符串格式
+                'price': float(price),
+                'purchase_date': purchase_date.toString('yyyy-MM-dd'),
             }
-            self.save_data()  # 更新后保存数据
-    
-    def get_items(self):
+            self.save_data()
+
+    def get_items(self) -> list[dict[str, Any]]:
         """
-        获取所有物品列表
-        :return: 物品列表
+        获取所有物品列表。
+
+        Returns:
+            物品列表。
         """
         return self.items
-    
-    def calculate_days_used(self, item):
+
+    def calculate_days_used(self, item: dict[str, Any]) -> int:
         """
-        计算物品已使用天数
-        :param item: 物品字典
-        :return: 已使用天数
+        计算物品已使用天数。
+
+        Args:
+            item: 物品字典。
+
+        Returns:
+            已使用天数（包含购买当天）。
         """
-        # 将字符串日期转换为QDate对象
         purchase_date = QDate.fromString(item['purchase_date'], 'yyyy-MM-dd')
-        today = QDate.currentDate()  # 获取当前日期
-        # 计算从购买日期到今天的天数（包含购买当天）
+        today = QDate.currentDate()
         days_used = purchase_date.daysTo(today) + 1
         return days_used
-    
-    def calculate_daily_cost(self, item):
+
+    def calculate_daily_cost(self, item: dict[str, Any]) -> float:
         """
-        计算单个物品的日均使用价格
-        :param item: 物品字典
-        :return: 日均使用价格
+        计算单个物品的日均使用价格。
+
+        Args:
+            item: 物品字典。
+
+        Returns:
+            日均使用价格。
         """
         days_used = self.calculate_days_used(item)
-        
+
         if days_used > 0:
             daily_cost = item['price'] / days_used
         else:
             daily_cost = item['price']
-        
+
         return daily_cost
-    
-    def get_total_assets(self):
+
+    def get_total_assets(self) -> float:
         """
-        计算所有物品的总资产
-        :return: 总资产金额
+        计算所有物品的总资产。
+
+        Returns:
+            总资产金额。
         """
-        # 对所有物品的价格求和
         total = sum(item['price'] for item in self.items)
         return total
-    
-    def get_average_daily_cost(self):
+
+    def get_average_daily_cost(self) -> float:
         """
-        计算所有物品的日均总成本
-        :return: 日均总成本
+        计算所有物品的日均总成本。
+
+        Returns:
+            日均总成本。
         """
         if not self.items:
-            return 0
-        
-        # 计算所有物品的日均使用价格总和
-        total_daily_cost = sum(self.calculate_daily_cost(item) for item in self.items)
+            return 0.0
+
+        total_daily_cost = sum(
+            self.calculate_daily_cost(item) for item in self.items
+        )
         return total_daily_cost

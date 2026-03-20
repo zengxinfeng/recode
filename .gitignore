@@ -125,3 +125,5 @@ Thumbs.db
 
 # datas files
 app/resources/datas/
+temp.py
+.trae/
