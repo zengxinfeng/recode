@@ -2,9 +2,10 @@ import ctypes
 import sys
 from typing import Any
 
-from PySide6.QtCore import QDate, Qt
+from PySide6.QtCore import QDate, QPoint, Qt
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
+    QComboBox,
     QDateEdit,
     QFormLayout,
     QGridLayout,
@@ -27,9 +28,12 @@ from PySide6.QtWidgets import (
     QDialogButtonBox,
 )
 
+from app.models.clothing_manager import ClothingManager
 from app.models.item_manager import ItemManager
 from app.utils.path_utils import get_dark_style_path, get_main_style_path
 from app.views.widgets.date_input import DateInput
+from app.views.widgets.filter_header import FilterHeader
+from app.views.widgets.filter_popup import FilterPopup
 
 
 WINDOW_MIN_WIDTH = 800
@@ -52,8 +56,12 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.current_theme: str = 'dark'
         self.item_manager: ItemManager = ItemManager()
+        self.clothing_manager: ClothingManager = ClothingManager()
         self.item_management_widget: QWidget | None = None
+        self.clothing_management_widget: QWidget | None = None
         self.sort_states: dict[int, int] = {}
+        self.clothing_sort_states: dict[int, int] = {}
+        self.clothing_type_filter_selected: list[str] | None = None
 
         self.load_styles()
         self.init_ui()
@@ -187,6 +195,9 @@ class MainWindow(QMainWindow):
         item1 = QListWidgetItem('📦 物品记录管理')
         self.nav_list.addItem(item1)
 
+        item2 = QListWidgetItem('👕 衣物记录管理')
+        self.nav_list.addItem(item2)
+
         self.nav_list.setCurrentRow(0)
         self.nav_list.itemClicked.connect(self.switch_view)
         nav_layout.addWidget(self.nav_list)
@@ -312,6 +323,8 @@ class MainWindow(QMainWindow):
             "totalAssetsCard": "💰",
             "dailyCostCard": "📊",
             "itemCountCard": "📦",
+            "clothingTotalAssetsCard": "👗",
+            "clothingCountCard": "👕",
         }
         icon_text = icon_map.get(card_name, "📈")
         icon_label = QLabel(icon_text)
@@ -469,9 +482,20 @@ class MainWindow(QMainWindow):
             item: 点击的导航项。
         """
         view_name = item.text()
-        if view_name == '物品记录管理':
+        if '物品记录管理' in view_name:
+            if self.clothing_management_widget:
+                self.clothing_management_widget.hide()
+            if self.item_management_widget:
+                self.item_management_widget.show()
             self.refresh_table()
             self.update_stats()
+        elif '衣物记录管理' in view_name:
+            if self.item_management_widget:
+                self.item_management_widget.hide()
+            self.create_clothing_management_view()
+            self.clothing_management_widget.show()
+            self._apply_clothing_filters()
+            self.update_clothing_stats()
 
     def handle_header_click(self, logical_index: int) -> None:
         """
@@ -792,3 +816,589 @@ class MainWindow(QMainWindow):
                 self.refresh_table()
             self.update_stats()
             self.statusBar.showMessage('物品修改成功', STATUS_MESSAGE_DURATION)
+
+    def create_clothing_management_view(self) -> None:
+        """
+        创建衣物记录管理视图（只创建一次）。
+
+        构建包含统计信息、输入区域、搜索区域和衣物列表的完整视图。
+        """
+        if self.clothing_management_widget is not None:
+            return
+
+        self.clothing_management_widget = QWidget()
+        clothing_layout = QVBoxLayout(self.clothing_management_widget)
+        clothing_layout.setSpacing(10)
+        clothing_layout.setContentsMargins(0, 0, 0, 0)
+
+        stats_group = self._create_clothing_stats_group()
+        input_search_layout = self._create_clothing_input_search_layout()
+        table_group = self._create_clothing_table_group()
+
+        clothing_layout.addWidget(stats_group)
+        clothing_layout.addLayout(input_search_layout)
+        clothing_layout.addWidget(table_group, 1)
+
+        self.content_layout.addWidget(self.clothing_management_widget)
+        self.clothing_management_widget.hide()
+
+    def _create_clothing_stats_group(self) -> QGroupBox:
+        """
+        创建衣物统计信息区域。
+
+        Returns:
+            包含统计卡件的分组框。
+        """
+        stats_group = QGroupBox('📊 统计信息')
+        stats_layout = QHBoxLayout()
+        stats_layout.setSpacing(16)
+        stats_layout.setContentsMargins(18, 18, 18, 18)
+
+        total_assets_card = self._create_stat_card(
+            "clothingTotalAssetsCard", "总资产", "clothingTotalAssetsValue", "¥0.00"
+        )
+        self.clothing_total_assets_label = total_assets_card.findChild(
+            QLabel, "clothingTotalAssetsValue"
+        )
+
+        item_count_card = self._create_stat_card(
+            "clothingCountCard", "衣物数量", "clothingCountValue", "0"
+        )
+        self.clothing_count_label = item_count_card.findChild(
+            QLabel, "clothingCountValue"
+        )
+
+        stats_layout.addWidget(total_assets_card, 1)
+        stats_layout.addWidget(item_count_card, 1)
+        stats_group.setLayout(stats_layout)
+
+        return stats_group
+
+    def _create_clothing_input_search_layout(self) -> QHBoxLayout:
+        """
+        创建衣物输入和搜索区域的水平布局。
+
+        Returns:
+            包含输入区域和搜索区域的水平布局。
+        """
+        input_search_layout = QHBoxLayout()
+        input_search_layout.setSpacing(15)
+
+        input_group = self._create_clothing_input_group()
+        search_group = self._create_clothing_search_group()
+
+        input_search_layout.addWidget(input_group, 3)
+        input_search_layout.addWidget(search_group, 1)
+
+        return input_search_layout
+
+    def _create_clothing_input_group(self) -> QGroupBox:
+        """
+        创建衣物输入区域。
+
+        Returns:
+            包含衣物输入控件的分组框。
+        """
+        input_group = QGroupBox('👕 添加衣物')
+        input_group.setObjectName("clothingInputGroup")
+        input_layout = QHBoxLayout()
+        input_layout.setSpacing(16)
+        input_layout.setContentsMargins(24, 16, 24, 16)
+
+        name_label = QLabel('名称:')
+        name_label.setObjectName("inputLabel")
+        self.clothing_name_input = QLineEdit()
+        self.clothing_name_input.setPlaceholderText('衣物名称')
+        self.clothing_name_input.setMinimumWidth(120)
+        input_layout.addWidget(name_label)
+        input_layout.addWidget(self.clothing_name_input)
+
+        type_label = QLabel('类型:')
+        type_label.setObjectName("inputLabel")
+        self.clothing_type_input = QLineEdit()
+        self.clothing_type_input.setPlaceholderText('如：T恤、裤子、外套')
+        self.clothing_type_input.setMinimumWidth(120)
+        input_layout.addWidget(type_label)
+        input_layout.addWidget(self.clothing_type_input)
+
+        price_label = QLabel('价格:')
+        price_label.setObjectName("inputLabel")
+        self.clothing_price_input = QLineEdit()
+        self.clothing_price_input.setPlaceholderText('购买价格')
+        self.clothing_price_input.setMinimumWidth(80)
+        input_layout.addWidget(price_label)
+        input_layout.addWidget(self.clothing_price_input)
+
+        date_label = QLabel('日期:')
+        date_label.setObjectName("inputLabel")
+        self.clothing_date_input = DateInput()
+        input_layout.addWidget(date_label)
+        input_layout.addWidget(self.clothing_date_input)
+
+        input_layout.addSpacing(8)
+
+        self.add_clothing_button = QPushButton('➕ 添加')
+        self.add_clothing_button.setObjectName("addButton")
+        self.add_clothing_button.clicked.connect(self.add_clothing)
+        input_layout.addWidget(self.add_clothing_button)
+
+        input_group.setLayout(input_layout)
+        return input_group
+
+    def _create_clothing_search_group(self) -> QGroupBox:
+        """
+        创建衣物搜索区域。
+
+        Returns:
+            包含搜索控件的分组框。
+        """
+        search_group = QGroupBox('🔍 搜索')
+        search_group.setObjectName("clothingSearchGroup")
+        search_layout = QHBoxLayout()
+        search_layout.setSpacing(10)
+        search_layout.setContentsMargins(20, 14, 20, 14)
+
+        search_label = QLabel('🔍')
+        search_label.setStyleSheet("font-size: 16px;")
+        self.clothing_search_input = QLineEdit()
+        self.clothing_search_input.setPlaceholderText('输入衣物名称进行搜索...')
+        self.clothing_search_input.textChanged.connect(self.search_clothing)
+        search_layout.addWidget(search_label)
+        search_layout.addWidget(self.clothing_search_input)
+
+        search_group.setLayout(search_layout)
+
+        return search_group
+
+    def _create_clothing_table_group(self) -> QGroupBox:
+        """
+        创建衣物列表表格区域。
+
+        Returns:
+            包含表格控件的分组框。
+        """
+        table_group = QGroupBox('📋 衣物列表')
+        table_group.setObjectName("clothingTableGroup")
+        table_layout = QVBoxLayout()
+        table_layout.setContentsMargins(12, 12, 12, 12)
+
+        self.clothing_table = QTableWidget()
+        self.clothing_table.setObjectName("clothingTable")
+        self.clothing_table.setColumnCount(5)
+        self.clothing_table.setHorizontalHeaderLabels(
+            ['衣物名称', '衣物类型', '购买价格', '购买日期', '操作']
+        )
+
+        self.clothing_filter_header = FilterHeader(self.clothing_table)
+        self.clothing_table.setHorizontalHeader(self.clothing_filter_header)
+        self.clothing_filter_header.filter_clicked.connect(self._show_type_filter)
+
+        header = self.clothing_table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.Stretch)
+        header.setSectionResizeMode(1, QHeaderView.Fixed)
+        header.resizeSection(1, 120)
+        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(4, QHeaderView.Fixed)
+        header.resizeSection(4, 200)
+
+        self.clothing_table.verticalHeader().setDefaultSectionSize(TABLE_ROW_HEIGHT)
+        self.clothing_table.verticalHeader().setVisible(False)
+
+        self.clothing_table.setSortingEnabled(True)
+        self.clothing_table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.clothing_table.setAlternatingRowColors(True)
+
+        self.clothing_table.cellClicked.connect(self.handle_clothing_cell_click)
+        header.sectionClicked.connect(self.handle_clothing_header_click)
+
+        for i in range(5):
+            self.clothing_sort_states[i] = 0
+
+        table_layout.addWidget(self.clothing_table)
+        table_group.setLayout(table_layout)
+
+        return table_group
+
+    def handle_clothing_header_click(self, logical_index: int) -> None:
+        """
+        处理衣物表头点击事件，实现点击第三下取消排序。
+
+        Args:
+            logical_index: 点击的列索引。
+        """
+        self.clothing_table.setSortingEnabled(False)
+
+        self.clothing_sort_states[logical_index] = (
+            self.clothing_sort_states[logical_index] + 1
+        ) % 3
+
+        if self.clothing_sort_states[logical_index] == 0:
+            self.clothing_table.setSortingEnabled(True)
+            self.clothing_table.horizontalHeader().setSortIndicator(
+                -1, Qt.AscendingOrder
+            )
+            if self.clothing_search_input.text():
+                self.search_clothing()
+            else:
+                self.refresh_clothing_table()
+        elif self.clothing_sort_states[logical_index] == 1:
+            self.clothing_table.sortByColumn(logical_index, Qt.AscendingOrder)
+            self.clothing_table.setSortingEnabled(True)
+        else:
+            self.clothing_table.sortByColumn(logical_index, Qt.DescendingOrder)
+            self.clothing_table.setSortingEnabled(True)
+
+    def add_clothing(self) -> None:
+        """
+        添加衣物功能函数。
+
+        验证输入并添加新衣物到管理器。
+        """
+        name = self.clothing_name_input.text().strip()
+        clothing_type = self.clothing_type_input.text().strip()
+        price_text = self.clothing_price_input.text().strip()
+
+        if not name:
+            QMessageBox.warning(self, '警告', '请输入衣物名称')
+            return
+
+        if not clothing_type:
+            QMessageBox.warning(self, '警告', '请输入衣物类型')
+            return
+
+        try:
+            price = float(price_text)
+            if price <= 0:
+                raise ValueError("价格必须大于0")
+        except ValueError:
+            QMessageBox.warning(self, '警告', '请输入有效的购买价格')
+            return
+
+        self.clothing_manager.add_item(
+            name, clothing_type, price, self.clothing_date_input.date()
+        )
+
+        self._apply_clothing_filters()
+        self.update_clothing_stats()
+        self.statusBar.showMessage('衣物添加成功', STATUS_MESSAGE_DURATION)
+
+        self.clothing_name_input.clear()
+        self.clothing_type_input.clear()
+        self.clothing_price_input.clear()
+        self.clothing_date_input.setDate(QDate.currentDate())
+
+    def refresh_clothing_table(self) -> None:
+        """
+        刷新衣物表格显示。
+
+        从衣物管理器加载所有衣物并更新表格。
+        """
+        items = self.clothing_manager.get_items()
+
+        current_sort_column = (
+            self.clothing_table.horizontalHeader().sortIndicatorSection()
+        )
+        current_sort_order = self.clothing_table.horizontalHeader().sortIndicatorOrder()
+
+        self.clothing_table.setSortingEnabled(False)
+        self.clothing_table.setRowCount(len(items))
+
+        for row, item in enumerate(items):
+            self._populate_clothing_table_row(row, item)
+
+        self.clothing_table.setSortingEnabled(True)
+
+        if current_sort_column != -1:
+            self.clothing_table.sortByColumn(current_sort_column, current_sort_order)
+
+    def _populate_clothing_table_row(self, row: int, item: dict[str, Any]) -> None:
+        """
+        填充衣物表格单行数据。
+
+        Args:
+            row: 行索引。
+            item: 衣物数据字典。
+        """
+        name_item = QTableWidgetItem(item.get('name', ''))
+        name_item.setToolTip(f"衣物名称：{item.get('name', '')}")
+        self.clothing_table.setItem(row, 0, name_item)
+
+        # 为衣物类型创建标签样式的单元格
+        type_widget = QWidget()
+        type_layout = QHBoxLayout(type_widget)
+        type_layout.setContentsMargins(4, 2, 4, 2)
+        type_label = QLabel(item['clothing_type'])
+        type_label.setObjectName("clothingTypeTag")
+        type_layout.addWidget(type_label)
+        type_layout.addStretch()
+        self.clothing_table.setCellWidget(row, 1, type_widget)
+
+        price_item = QTableWidgetItem(f"¥{item['price']:.2f}")
+        price_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        price_item.setData(Qt.ItemDataRole.UserRole, item['price'])
+        self.clothing_table.setItem(row, 2, price_item)
+
+        date_item = QTableWidgetItem(item['purchase_date'])
+        self.clothing_table.setItem(row, 3, date_item)
+
+        button_widget = self._create_clothing_action_buttons(row)
+        self.clothing_table.setCellWidget(row, 4, button_widget)
+
+    def _create_clothing_action_buttons(self, row: int) -> QWidget:
+        """
+        创建衣物操作按钮部件。
+
+        Args:
+            row: 对应的表格行索引。
+
+        Returns:
+            包含编辑和删除按钮的部件。
+        """
+        button_layout = QHBoxLayout()
+        button_layout.setContentsMargins(0, 0, 0, 0)
+        button_layout.setSpacing(8)
+
+        edit_btn = QPushButton('✏️ 修改')
+        edit_btn.setObjectName("editButton")
+        edit_btn.clicked.connect(lambda _, r=row: self.edit_clothing(r))
+        button_layout.addWidget(edit_btn)
+
+        delete_btn = QPushButton('🗑️ 删除')
+        delete_btn.setObjectName("deleteButton")
+        delete_btn.clicked.connect(lambda _, r=row: self.delete_clothing(r))
+        button_layout.addWidget(delete_btn)
+
+        button_widget = QWidget()
+        button_widget.setLayout(button_layout)
+        return button_widget
+
+    def delete_clothing(self, row: int) -> None:
+        """
+        删除衣物功能函数。
+
+        Args:
+            row: 要删除的行号。
+        """
+        item_name = self.clothing_manager.items[row].get('name', '未命名')
+        reply = QMessageBox.question(
+            self,
+            '确认删除',
+            f'确定要删除衣物 "{item_name}" 吗？',
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+
+        if reply == QMessageBox.StandardButton.Yes:
+            self.clothing_manager.remove_item(row)
+            self._apply_clothing_filters()
+            self.update_clothing_stats()
+            self.statusBar.showMessage('衣物删除成功', STATUS_MESSAGE_DURATION)
+
+    def update_clothing_stats(self) -> None:
+        """
+        更新衣物统计信息显示。
+
+        计算并更新总资产和衣物数量。
+        """
+        total_assets = self.clothing_manager.get_total_assets()
+        item_count = len(self.clothing_manager.get_items())
+
+        self.clothing_total_assets_label.setText(f'¥{total_assets:.2f}')
+        self.clothing_count_label.setText(f'{item_count}')
+
+    def _apply_clothing_filters(self) -> None:
+        """
+        应用搜索和类型筛选。
+        """
+        search_text = self.clothing_search_input.text().lower()
+        selected_types = self.clothing_type_filter_selected
+
+        items = self.clothing_manager.get_items()
+
+        filtered_items = [
+            item for item in items
+            if (not search_text or search_text in item.get('name', '').lower())
+            and (selected_types is None or item.get('clothing_type') in selected_types)
+        ]
+
+        current_sort_column = (
+            self.clothing_table.horizontalHeader().sortIndicatorSection()
+        )
+        current_sort_order = self.clothing_table.horizontalHeader().sortIndicatorOrder()
+
+        self.clothing_table.setSortingEnabled(False)
+        self.clothing_table.setRowCount(len(filtered_items))
+
+        for row, item in enumerate(filtered_items):
+            self._populate_filtered_clothing_table_row(row, item, items)
+
+        self.clothing_table.setSortingEnabled(True)
+
+        if current_sort_column != -1:
+            self.clothing_table.sortByColumn(current_sort_column, current_sort_order)
+
+    def _show_type_filter(self, column: int) -> None:
+        """
+        显示类型过滤弹窗。
+
+        Args:
+            column: 点击的列索引。
+        """
+        all_types = self.clothing_manager.get_all_clothing_types()
+        if not all_types:
+            return
+
+        if self.clothing_type_filter_selected is None:
+            selected = all_types
+        else:
+            selected = self.clothing_type_filter_selected
+
+        popup = FilterPopup(all_types, selected, self)
+
+        header = self.clothing_filter_header
+        x = header.sectionViewportPosition(column)
+        width = header.sectionSize(column)
+        height = header.height()
+
+        global_pos = self.clothing_table.mapToGlobal(QPoint(x, height))
+        popup.move(global_pos.x(), global_pos.y() + 2)
+        popup.filter_applied.connect(self._on_type_filter_applied)
+        popup.show()
+
+    def _on_type_filter_applied(self, selected: list[str]) -> None:
+        """
+        处理类型筛选结果。
+
+        Args:
+            selected: 选中的类型列表。
+        """
+        all_types = self.clothing_manager.get_all_clothing_types()
+
+        if set(selected) == set(all_types):
+            self.clothing_type_filter_selected = None
+            has_filter = False
+        else:
+            self.clothing_type_filter_selected = selected
+            has_filter = True
+
+        self.clothing_filter_header.set_filter_active(has_filter)
+
+        self._apply_clothing_filters()
+
+    def search_clothing(self) -> None:
+        """
+        搜索衣物功能。
+
+        根据搜索文本过滤并显示匹配的衣物。
+        """
+        self._apply_clothing_filters()
+
+    def _populate_filtered_clothing_table_row(
+        self, row: int, item: dict[str, Any], all_items: list[dict[str, Any]]
+    ) -> None:
+        """
+        填充过滤结果衣物表格单行数据。
+
+        Args:
+            row: 行索引。
+            item: 衣物数据字典。
+            all_items: 完整衣物列表，用于查找原始索引。
+        """
+        name_item = QTableWidgetItem(item.get('name', ''))
+        name_item.setToolTip(f"衣物名称：{item.get('name', '')}")
+        self.clothing_table.setItem(row, 0, name_item)
+
+        # 为衣物类型创建标签样式的单元格
+        type_widget = QWidget()
+        type_layout = QHBoxLayout(type_widget)
+        type_layout.setContentsMargins(4, 2, 4, 2)
+        type_label = QLabel(item['clothing_type'])
+        type_label.setObjectName("clothingTypeTag")
+        type_layout.addWidget(type_label)
+        type_layout.addStretch()
+        self.clothing_table.setCellWidget(row, 1, type_widget)
+
+        price_item = QTableWidgetItem(f"¥{item['price']:.2f}")
+        price_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        price_item.setData(Qt.ItemDataRole.UserRole, item['price'])
+        self.clothing_table.setItem(row, 2, price_item)
+
+        date_item = QTableWidgetItem(item['purchase_date'])
+        self.clothing_table.setItem(row, 3, date_item)
+
+        original_index = all_items.index(item)
+        button_widget = self._create_clothing_action_buttons(original_index)
+        self.clothing_table.setCellWidget(row, 4, button_widget)
+
+    def handle_clothing_cell_click(self, row: int, column: int) -> None:
+        """
+        处理衣物表格单元格点击事件。
+
+        Args:
+            row: 行号。
+            column: 列号。
+        """
+
+    def edit_clothing(self, row: int) -> None:
+        """
+        修改衣物功能函数。
+
+        Args:
+            row: 要修改的行号。
+        """
+        item = self.clothing_manager.items[row]
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle('修改衣物')
+        dialog.setGeometry(200, 200, 400, 250)
+
+        layout = QFormLayout(dialog)
+
+        name_edit = QLineEdit(item.get('name', ''))
+        type_edit = QLineEdit(item['clothing_type'])
+        price_edit = QLineEdit(str(item['price']))
+        date_edit = DateInput()
+        date_edit.setDate(QDate.fromString(item['purchase_date'], 'yyyy-MM-dd'))
+
+        layout.addRow('衣物名称:', name_edit)
+        layout.addRow('衣物类型:', type_edit)
+        layout.addRow('购买价格:', price_edit)
+        layout.addRow('购买日期:', date_edit)
+
+        button_box = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
+        layout.addRow(button_box)
+
+        button_box.accepted.connect(dialog.accept)
+        button_box.rejected.connect(dialog.reject)
+
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            name = name_edit.text().strip()
+            clothing_type = type_edit.text().strip()
+            price_text = price_edit.text().strip()
+
+            if not name:
+                QMessageBox.warning(self, '警告', '请输入衣物名称')
+                return
+
+            if not clothing_type:
+                QMessageBox.warning(self, '警告', '请输入衣物类型')
+                return
+
+            try:
+                price = float(price_text)
+                if price <= 0:
+                    raise ValueError("价格必须大于0")
+            except ValueError:
+                QMessageBox.warning(self, '警告', '请输入有效的购买价格')
+                return
+
+            self.clothing_manager.update_item(
+                row, name, clothing_type, price, date_edit.date()
+            )
+
+            self._apply_clothing_filters()
+            self.update_clothing_stats()
+            self.statusBar.showMessage('衣物修改成功', STATUS_MESSAGE_DURATION)

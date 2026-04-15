@@ -253,10 +253,93 @@ QLabel#itemCountValue {
     margin-left: 12px;
 }
 
+/* 衣物统计卡片样式 - 使用紫粉色调 */
+QWidget#clothingTotalAssetsCard {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+        stop:0 rgba(168, 85, 247, 0.15), stop:1 rgba(168, 85, 247, 0.05));
+    border-radius: 16px;
+    border: 1px solid rgba(168, 85, 247, 0.3);
+    border-left: 3px solid #A855F7;
+}
+
+QWidget#clothingTotalAssetsCard:hover {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+        stop:0 rgba(168, 85, 247, 0.2), stop:1 rgba(168, 85, 247, 0.08));
+    border-color: rgba(168, 85, 247, 0.5);
+}
+
+QWidget#clothingCountCard {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+        stop:0 rgba(236, 72, 153, 0.15), stop:1 rgba(236, 72, 153, 0.05));
+    border-radius: 16px;
+    border: 1px solid rgba(236, 72, 153, 0.3);
+    border-left: 3px solid #EC4899;
+}
+
+QWidget#clothingCountCard:hover {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+        stop:0 rgba(236, 72, 153, 0.2), stop:1 rgba(236, 72, 153, 0.08));
+    border-color: rgba(236, 72, 153, 0.5);
+}
+
+QLabel#clothingTotalAssetsValue {
+    font-weight: 700;
+    font-size: 26px;
+    color: #C084FC;
+    margin-left: 12px;
+}
+
+QLabel#clothingCountValue {
+    font-weight: 700;
+    font-size: 26px;
+    color: #F472B6;
+    margin-left: 12px;
+}
+
 /* 输入标签样式 */
 QLabel#inputLabel {
     font-weight: 500;
     color: #94A3B8;
+}
+
+/* 衣物类型标签样式 */
+QLabel#clothingTypeTag {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+        stop:0 rgba(168, 85, 247, 0.2), stop:1 rgba(236, 72, 153, 0.2));
+    color: #E879F9;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+/* 衣物输入分组框样式 */
+QGroupBox#clothingInputGroup {
+    border: 1px solid rgba(168, 85, 247, 0.2);
+    background-color: rgba(15, 23, 42, 0.6);
+}
+
+QGroupBox#clothingInputGroup::title {
+    color: #C084FC;
+}
+
+/* 衣物搜索分组框样式 */
+QGroupBox#clothingSearchGroup {
+    border: 1px solid rgba(236, 72, 153, 0.2);
+    background-color: rgba(15, 23, 42, 0.6);
+}
+
+QGroupBox#clothingSearchGroup::title {
+    color: #F472B6;
+}
+
+/* 衣物列表分组框样式 */
+QGroupBox#clothingTableGroup {
+    border: 1px solid rgba(168, 85, 247, 0.15);
+}
+
+QGroupBox#clothingTableGroup::title {
+    color: #A78BFA;
 }
 
 /* 添加按钮样式 */
@@ -592,4 +675,108 @@ QCalendarWidget QToolButton::menu-indicator {
 QDialogButtonBox QPushButton {
     min-width: 80px;
     padding: 8px 20px;
+}
+
+/* 衣物表格专属样式 */
+QTableWidget#clothingTable {
+    background-color: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(168, 85, 247, 0.1);
+    border-radius: 12px;
+    gridline-color: rgba(168, 85, 247, 0.08);
+}
+
+QTableWidget#clothingTable::item {
+    border-bottom: 1px solid rgba(168, 85, 247, 0.06);
+}
+
+QTableWidget#clothingTable::item:selected {
+    background-color: rgba(168, 85, 247, 0.15);
+    color: #C084FC;
+}
+
+QTableWidget#clothingTable::item:hover {
+    background-color: rgba(168, 85, 247, 0.08);
+}
+
+QTableWidget#clothingTable::item:alternate {
+    background-color: rgba(30, 41, 59, 0.3);
+}
+
+/* 衣物表格表头样式 */
+QTableWidget#clothingTable QHeaderView::section {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+        stop:0 #0F172A, stop:0.5 #1E293B, stop:1 #0F172A);
+    color: #C084FC;
+    border-bottom: 2px solid #A855F7;
+}
+
+QTableWidget#clothingTable QHeaderView::section:hover {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+        stop:0 #1E293B, stop:0.5 #334155, stop:1 #1E293B);
+    color: #E879F9;
+}
+
+/* 过滤弹窗样式 - 简洁现代风格 */
+#filterPopup {
+    background-color: #1E293B;
+    border: 1px solid rgba(168, 85, 247, 0.25);
+    border-radius: 10px;
+}
+
+#filterPopup QCheckBox {
+    color: #E2E8F0;
+    spacing: 8px;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+#filterPopup QCheckBox::indicator {
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+    border: 1.5px solid #475569;
+    background-color: #0F172A;
+}
+
+#filterPopup QCheckBox::indicator:checked {
+    background-color: #A855F7;
+    border-color: #A855F7;
+}
+
+#filterPopup QCheckBox::indicator:hover {
+    border-color: #A855F7;
+}
+
+#filterSeparator {
+    background-color: rgba(168, 85, 247, 0.15);
+    max-height: 1px;
+    margin: 2px 0;
+}
+
+#filterList {
+    background-color: #0F172A;
+    border: 1px solid rgba(168, 85, 247, 0.15);
+    border-radius: 6px;
+    color: #E2E8F0;
+    outline: none;
+    font-size: 13px;
+}
+
+#filterList::item {
+    padding: 8px 10px;
+    border-radius: 4px;
+    margin: 1px 3px;
+    border: none;
+    outline: none;
+}
+
+#filterList::item:hover {
+    background-color: rgba(168, 85, 247, 0.12);
+    color: #C084FC;
+}
+
+#filterList::item:selected {
+    background-color: transparent;
+    border: none;
+    outline: none;
 }

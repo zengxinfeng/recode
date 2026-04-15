@@ -75,3 +75,13 @@ def get_dark_style_path() -> Path:
         暗黑主题样式文件的 Path 对象。
     """
     return get_style_path() / "dark.qss"
+
+
+def get_clothing_file_path() -> Path:
+    """
+    获取衣物数据文件路径。
+
+    Returns:
+        衣物数据文件的 Path 对象。
+    """
+    return get_data_path() / "clothing.json"
