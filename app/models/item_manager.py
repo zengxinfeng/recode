@@ -6,11 +6,16 @@
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from PySide6.QtCore import QDate
 
 from app.utils.path_utils import get_items_file_path
+
+ItemStatus = Literal['active', 'discontinued']
+DiscontinueReason = Literal['报废', '转卖', '闲置', '其他']
+
+DISCONTINUE_REASONS: list[DiscontinueReason] = ['报废', '转卖', '闲置', '其他']
 
 
 class ItemManager:
@@ -69,6 +74,9 @@ class ItemManager:
             'name': name,
             'price': float(price),
             'purchase_date': purchase_date.toString('yyyy-MM-dd'),
+            'status': 'active',
+            'discontinued_date': None,
+            'discontinued_reason': None,
         }
         self.items.append(item)
         self.save_data()
@@ -97,11 +105,50 @@ class ItemManager:
             purchase_date: 新的购买日期（QDate 对象）。
         """
         if 0 <= index < len(self.items):
+            existing_item = self.items[index]
             self.items[index] = {
                 'name': name,
                 'price': float(price),
                 'purchase_date': purchase_date.toString('yyyy-MM-dd'),
+                'status': existing_item.get('status', 'active'),
+                'discontinued_date': existing_item.get('discontinued_date'),
+                'discontinued_reason': existing_item.get('discontinued_reason'),
             }
+            self.save_data()
+
+    def discontinue_item(
+        self,
+        index: int,
+        discontinued_date: QDate,
+        discontinued_reason: str,
+    ) -> None:
+        """
+        将物品标记为已停用。
+
+        Args:
+            index: 要停用的物品索引。
+            discontinued_date: 停用日期（QDate 对象）。
+            discontinued_reason: 停用原因。
+        """
+        if 0 <= index < len(self.items):
+            self.items[index]['status'] = 'discontinued'
+            self.items[index]['discontinued_date'] = discontinued_date.toString(
+                'yyyy-MM-dd'
+            )
+            self.items[index]['discontinued_reason'] = discontinued_reason
+            self.save_data()
+
+    def reactivate_item(self, index: int) -> None:
+        """
+        将已停用的物品重新启用。
+
+        Args:
+            index: 要重新启用的物品索引。
+        """
+        if 0 <= index < len(self.items):
+            self.items[index]['status'] = 'active'
+            self.items[index]['discontinued_date'] = None
+            self.items[index]['discontinued_reason'] = None
             self.save_data()
 
     def get_items(self) -> list[dict[str, Any]]:
@@ -124,9 +171,14 @@ class ItemManager:
             已使用天数（包含购买当天）。
         """
         purchase_date = QDate.fromString(item['purchase_date'], 'yyyy-MM-dd')
-        today = QDate.currentDate()
-        days_used = purchase_date.daysTo(today) + 1
-        return days_used
+        
+        if item.get('status') == 'discontinued' and item.get('discontinued_date'):
+            end_date = QDate.fromString(item['discontinued_date'], 'yyyy-MM-dd')
+        else:
+            end_date = QDate.currentDate()
+        
+        days_used = purchase_date.daysTo(end_date) + 1
+        return max(days_used, 1)
 
     def calculate_daily_cost(self, item: dict[str, Any]) -> float:
         """

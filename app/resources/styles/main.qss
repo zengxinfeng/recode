@@ -408,6 +408,52 @@ QPushButton#deleteButton:pressed {
         stop:0 #F43F5E, stop:1 #E11D48);
 }
 
+/* 停用按钮样式 */
+QPushButton#discontinueButton {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 #FB923C, stop:1 #EA580C);
+    color: white;
+    padding: 6px 14px;
+    border-radius: 8px;
+    margin-left: 4px;
+    margin-right: 4px;
+    min-width: 50px;
+    font-size: 12px;
+}
+
+QPushButton#discontinueButton:hover {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 #FDBA74, stop:1 #FB923C);
+}
+
+QPushButton#discontinueButton:pressed {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 #EA580C, stop:1 #C2410C);
+}
+
+/* 重新启用按钮样式 */
+QPushButton#reactivateButton {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 #A78BFA, stop:1 #8B5CF6);
+    color: white;
+    padding: 6px 14px;
+    border-radius: 8px;
+    margin-left: 4px;
+    margin-right: 4px;
+    min-width: 50px;
+    font-size: 12px;
+}
+
+QPushButton#reactivateButton:hover {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 #C4B5FD, stop:1 #A78BFA);
+}
+
+QPushButton#reactivateButton:pressed {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 #8B5CF6, stop:1 #7C3AED);
+}
+
 /* 导航标题区域样式 */
 QWidget#navHeader {
     background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
@@ -587,6 +633,12 @@ QDialog {
     background-color: rgba(255, 255, 255, 0.95);
     border: 1px solid rgba(148, 163, 184, 0.2);
     border-radius: 16px;
+    padding: 16px 20px;
+}
+
+/* 对话框表单布局样式 */
+QDialog QFormLayout {
+    spacing: 14px;
 }
 
 /* 下拉菜单样式 */
@@ -675,7 +727,43 @@ QCalendarWidget QToolButton::menu-indicator {
 /* 对话框按钮盒样式 */
 QDialogButtonBox QPushButton {
     min-width: 80px;
-    padding: 8px 20px;
+    padding: 8px 24px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    border: none;
+}
+
+QDialogButtonBox QPushButton[text="OK"] {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 #22C55E, stop:1 #16A34A);
+    color: white;
+}
+
+QDialogButtonBox QPushButton[text="OK"]:hover {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 #4ADE80, stop:1 #22C55E);
+}
+
+QDialogButtonBox QPushButton[text="OK"]:pressed {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 #16A34A, stop:1 #15803D);
+}
+
+QDialogButtonBox QPushButton[text="Cancel"] {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 #94A3B8, stop:1 #64748B);
+    color: white;
+}
+
+QDialogButtonBox QPushButton[text="Cancel"]:hover {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 #CBD5E1, stop:1 #94A3B8);
+}
+
+QDialogButtonBox QPushButton[text="Cancel"]:pressed {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 #64748B, stop:1 #475569);
 }
 
 /* 衣物表格专属样式 */

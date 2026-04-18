@@ -1,6 +1,6 @@
 import ctypes
 import sys
-from typing import Any
+from typing import Any, Optional
 
 from PySide6.QtCore import QDate, QPoint, Qt
 from PySide6.QtGui import QIcon
@@ -32,6 +32,7 @@ from app.models.clothing_manager import ClothingManager
 from app.models.item_manager import ItemManager
 from app.utils.path_utils import get_dark_style_path, get_main_style_path
 from app.views.widgets.date_input import DateInput
+from app.views.widgets.discontinue_dialog import DiscontinueDialog
 from app.views.widgets.filter_header import FilterHeader
 from app.views.widgets.filter_popup import FilterPopup
 
@@ -442,9 +443,9 @@ class MainWindow(QMainWindow):
         table_layout.setContentsMargins(12, 12, 12, 12)
 
         self.table = QTableWidget()
-        self.table.setColumnCount(6)
+        self.table.setColumnCount(7)
         self.table.setHorizontalHeaderLabels(
-            ['物品名称', '购买价格', '购买日期', '已使用天数', '日均使用价格', '操作']
+            ['物品名称', '购买价格', '购买日期', '状态', '已使用天数', '日均使用价格', '操作']
         )
 
         header = self.table.horizontalHeader()
@@ -453,8 +454,9 @@ class MainWindow(QMainWindow):
         header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(4, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(5, QHeaderView.Fixed)
-        header.resizeSection(5, 200)
+        header.setSectionResizeMode(5, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(6, QHeaderView.Fixed)
+        header.resizeSection(6, 300)
 
         self.table.verticalHeader().setDefaultSectionSize(TABLE_ROW_HEIGHT)
         self.table.verticalHeader().setVisible(False)
@@ -466,7 +468,7 @@ class MainWindow(QMainWindow):
         self.table.cellClicked.connect(self.handle_cell_click)
         header.sectionClicked.connect(self.handle_header_click)
 
-        for i in range(6):
+        for i in range(7):
             self.sort_states[i] = 0
 
         table_layout.addWidget(self.table)
@@ -586,23 +588,40 @@ class MainWindow(QMainWindow):
             row: 行索引。
             item: 物品数据字典。
         """
+        is_discontinued = item.get('status') == 'discontinued'
+        
         name_item = QTableWidgetItem(item['name'])
         name_item.setToolTip(f"物品：{item['name']}")
+        if is_discontinued:
+            name_item.setForeground(Qt.GlobalColor.gray)
         self.table.setItem(row, 0, name_item)
 
         price_item = QTableWidgetItem(f"¥{item['price']:.2f}")
         price_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         price_item.setData(Qt.ItemDataRole.UserRole, item['price'])
+        if is_discontinued:
+            price_item.setForeground(Qt.GlobalColor.gray)
         self.table.setItem(row, 1, price_item)
 
         date_item = QTableWidgetItem(item['purchase_date'])
+        if is_discontinued:
+            date_item.setForeground(Qt.GlobalColor.gray)
         self.table.setItem(row, 2, date_item)
+
+        status_text = '已停用' if is_discontinued else '使用中'
+        status_item = QTableWidgetItem(status_text)
+        status_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+        if is_discontinued:
+            status_item.setForeground(Qt.GlobalColor.gray)
+        self.table.setItem(row, 3, status_item)
 
         days_used = self.item_manager.calculate_days_used(item)
         days_item = QTableWidgetItem(str(days_used))
         days_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
         days_item.setData(Qt.ItemDataRole.UserRole, days_used)
-        self.table.setItem(row, 3, days_item)
+        if is_discontinued:
+            days_item.setForeground(Qt.GlobalColor.gray)
+        self.table.setItem(row, 4, days_item)
 
         daily_cost = self.item_manager.calculate_daily_cost(item)
         daily_cost_item = QTableWidgetItem(f"¥{daily_cost:.2f}")
@@ -610,29 +629,45 @@ class MainWindow(QMainWindow):
             Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
         )
         daily_cost_item.setData(Qt.ItemDataRole.UserRole, daily_cost)
-        self.table.setItem(row, 4, daily_cost_item)
+        if is_discontinued:
+            daily_cost_item.setForeground(Qt.GlobalColor.gray)
+        self.table.setItem(row, 5, daily_cost_item)
 
-        button_widget = self._create_action_buttons(row)
-        self.table.setCellWidget(row, 5, button_widget)
+        button_widget = self._create_action_buttons(row, item)
+        self.table.setCellWidget(row, 6, button_widget)
 
-    def _create_action_buttons(self, row: int) -> QWidget:
+    def _create_action_buttons(self, row: int, item: Optional[dict[str, Any]] = None) -> QWidget:
         """
         创建操作按钮部件。
 
         Args:
             row: 对应的表格行索引。
+            item: 物品数据字典，用于判断状态。
 
         Returns:
-            包含编辑和删除按钮的部件。
+            包含编辑、停用/重新启用和删除按钮的部件。
         """
+        is_discontinued = item.get('status') == 'discontinued' if item else False
+        
         button_layout = QHBoxLayout()
         button_layout.setContentsMargins(0, 0, 0, 0)
-        button_layout.setSpacing(8)
+        button_layout.setSpacing(6)
 
         edit_btn = QPushButton('✏️ 修改')
         edit_btn.setObjectName("editButton")
         edit_btn.clicked.connect(lambda _, r=row: self.edit_item(r))
         button_layout.addWidget(edit_btn)
+
+        if is_discontinued:
+            reactivate_btn = QPushButton('🔄 启用')
+            reactivate_btn.setObjectName("reactivateButton")
+            reactivate_btn.clicked.connect(lambda _, r=row: self.reactivate_item(r))
+            button_layout.addWidget(reactivate_btn)
+        else:
+            discontinue_btn = QPushButton('⏹️ 停用')
+            discontinue_btn.setObjectName("discontinueButton")
+            discontinue_btn.clicked.connect(lambda _, r=row: self.discontinue_item(r))
+            button_layout.addWidget(discontinue_btn)
 
         delete_btn = QPushButton('🗑️ 删除')
         delete_btn.setObjectName("deleteButton")
@@ -666,6 +701,57 @@ class MainWindow(QMainWindow):
                 self.refresh_table()
             self.update_stats()
             self.statusBar.showMessage('物品删除成功', STATUS_MESSAGE_DURATION)
+
+    def discontinue_item(self, row: int) -> None:
+        """
+        停用物品功能函数。
+
+        Args:
+            row: 要停用的行号。
+        """
+        item = self.item_manager.items[row]
+        dialog = DiscontinueDialog(self, item['name'])
+        
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            discontinue_date = dialog.get_discontinue_date()
+            discontinue_reason = dialog.get_discontinue_reason()
+            
+            self.item_manager.discontinue_item(row, discontinue_date, discontinue_reason)
+            
+            if self.search_input.text():
+                self.search_items()
+            else:
+                self.refresh_table()
+            self.update_stats()
+            self.statusBar.showMessage(
+                f'物品已停用，原因：{discontinue_reason}',
+                STATUS_MESSAGE_DURATION
+            )
+
+    def reactivate_item(self, row: int) -> None:
+        """
+        重新启用物品功能函数。
+
+        Args:
+            row: 要重新启用的行号。
+        """
+        item = self.item_manager.items[row]
+        reply = QMessageBox.question(
+            self,
+            '确认重新启用',
+            f'确定要重新启用物品 "{item["name"]}" 吗？',
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+
+        if reply == QMessageBox.StandardButton.Yes:
+            self.item_manager.reactivate_item(row)
+            if self.search_input.text():
+                self.search_items()
+            else:
+                self.refresh_table()
+            self.update_stats()
+            self.statusBar.showMessage('物品已重新启用', STATUS_MESSAGE_DURATION)
 
     def update_stats(self) -> None:
         """
@@ -721,23 +807,40 @@ class MainWindow(QMainWindow):
             item: 物品数据字典。
             all_items: 完整物品列表，用于查找原始索引。
         """
+        is_discontinued = item.get('status') == 'discontinued'
+        
         name_item = QTableWidgetItem(item['name'])
         name_item.setToolTip(f"物品：{item['name']}")
+        if is_discontinued:
+            name_item.setForeground(Qt.GlobalColor.gray)
         self.table.setItem(row, 0, name_item)
 
         price_item = QTableWidgetItem(f"¥{item['price']:.2f}")
         price_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         price_item.setData(Qt.ItemDataRole.UserRole, item['price'])
+        if is_discontinued:
+            price_item.setForeground(Qt.GlobalColor.gray)
         self.table.setItem(row, 1, price_item)
 
         date_item = QTableWidgetItem(item['purchase_date'])
+        if is_discontinued:
+            date_item.setForeground(Qt.GlobalColor.gray)
         self.table.setItem(row, 2, date_item)
+
+        status_text = '已停用' if is_discontinued else '使用中'
+        status_item = QTableWidgetItem(status_text)
+        status_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+        if is_discontinued:
+            status_item.setForeground(Qt.GlobalColor.gray)
+        self.table.setItem(row, 3, status_item)
 
         days_used = self.item_manager.calculate_days_used(item)
         days_item = QTableWidgetItem(str(days_used))
         days_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
         days_item.setData(Qt.ItemDataRole.UserRole, days_used)
-        self.table.setItem(row, 3, days_item)
+        if is_discontinued:
+            days_item.setForeground(Qt.GlobalColor.gray)
+        self.table.setItem(row, 4, days_item)
 
         daily_cost = self.item_manager.calculate_daily_cost(item)
         daily_cost_item = QTableWidgetItem(f"¥{daily_cost:.2f}")
@@ -745,11 +848,13 @@ class MainWindow(QMainWindow):
             Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
         )
         daily_cost_item.setData(Qt.ItemDataRole.UserRole, daily_cost)
-        self.table.setItem(row, 4, daily_cost_item)
+        if is_discontinued:
+            daily_cost_item.setForeground(Qt.GlobalColor.gray)
+        self.table.setItem(row, 5, daily_cost_item)
 
         original_index = all_items.index(item)
-        button_widget = self._create_action_buttons(original_index)
-        self.table.setCellWidget(row, 5, button_widget)
+        button_widget = self._create_action_buttons(original_index, item)
+        self.table.setCellWidget(row, 6, button_widget)
 
     def handle_cell_click(self, row: int, column: int) -> None:
         """
@@ -984,9 +1089,9 @@ class MainWindow(QMainWindow):
 
         self.clothing_table = QTableWidget()
         self.clothing_table.setObjectName("clothingTable")
-        self.clothing_table.setColumnCount(5)
+        self.clothing_table.setColumnCount(6)
         self.clothing_table.setHorizontalHeaderLabels(
-            ['衣物名称', '衣物类型', '购买价格', '购买日期', '操作']
+            ['衣物名称', '衣物类型', '购买价格', '购买日期', '状态', '操作']
         )
 
         self.clothing_filter_header = FilterHeader(self.clothing_table)
@@ -999,8 +1104,9 @@ class MainWindow(QMainWindow):
         header.resizeSection(1, 120)
         header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(4, QHeaderView.Fixed)
-        header.resizeSection(4, 200)
+        header.setSectionResizeMode(4, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(5, QHeaderView.Fixed)
+        header.resizeSection(5, 300)
 
         self.clothing_table.verticalHeader().setDefaultSectionSize(TABLE_ROW_HEIGHT)
         self.clothing_table.verticalHeader().setVisible(False)
@@ -1012,7 +1118,7 @@ class MainWindow(QMainWindow):
         self.clothing_table.cellClicked.connect(self.handle_clothing_cell_click)
         header.sectionClicked.connect(self.handle_clothing_header_click)
 
-        for i in range(5):
+        for i in range(6):
             self.clothing_sort_states[i] = 0
 
         table_layout.addWidget(self.clothing_table)
@@ -1120,16 +1226,21 @@ class MainWindow(QMainWindow):
             row: 行索引。
             item: 衣物数据字典。
         """
+        is_discontinued = item.get('status') == 'discontinued'
+        
         name_item = QTableWidgetItem(item.get('name', ''))
         name_item.setToolTip(f"衣物名称：{item.get('name', '')}")
+        if is_discontinued:
+            name_item.setForeground(Qt.GlobalColor.gray)
         self.clothing_table.setItem(row, 0, name_item)
 
-        # 为衣物类型创建标签样式的单元格
         type_widget = QWidget()
         type_layout = QHBoxLayout(type_widget)
         type_layout.setContentsMargins(4, 2, 4, 2)
         type_label = QLabel(item['clothing_type'])
         type_label.setObjectName("clothingTypeTag")
+        if is_discontinued:
+            type_label.setStyleSheet("color: gray;")
         type_layout.addWidget(type_label)
         type_layout.addStretch()
         self.clothing_table.setCellWidget(row, 1, type_widget)
@@ -1137,32 +1248,57 @@ class MainWindow(QMainWindow):
         price_item = QTableWidgetItem(f"¥{item['price']:.2f}")
         price_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         price_item.setData(Qt.ItemDataRole.UserRole, item['price'])
+        if is_discontinued:
+            price_item.setForeground(Qt.GlobalColor.gray)
         self.clothing_table.setItem(row, 2, price_item)
 
         date_item = QTableWidgetItem(item['purchase_date'])
+        if is_discontinued:
+            date_item.setForeground(Qt.GlobalColor.gray)
         self.clothing_table.setItem(row, 3, date_item)
 
-        button_widget = self._create_clothing_action_buttons(row)
-        self.clothing_table.setCellWidget(row, 4, button_widget)
+        status_text = '已停用' if is_discontinued else '使用中'
+        status_item = QTableWidgetItem(status_text)
+        status_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+        if is_discontinued:
+            status_item.setForeground(Qt.GlobalColor.gray)
+        self.clothing_table.setItem(row, 4, status_item)
 
-    def _create_clothing_action_buttons(self, row: int) -> QWidget:
+        button_widget = self._create_clothing_action_buttons(row, item)
+        self.clothing_table.setCellWidget(row, 5, button_widget)
+
+    def _create_clothing_action_buttons(self, row: int, item: Optional[dict[str, Any]] = None) -> QWidget:
         """
         创建衣物操作按钮部件。
 
         Args:
             row: 对应的表格行索引。
+            item: 衣物数据字典，用于判断状态。
 
         Returns:
-            包含编辑和删除按钮的部件。
+            包含编辑、停用/重新启用和删除按钮的部件。
         """
+        is_discontinued = item.get('status') == 'discontinued' if item else False
+        
         button_layout = QHBoxLayout()
         button_layout.setContentsMargins(0, 0, 0, 0)
-        button_layout.setSpacing(8)
+        button_layout.setSpacing(6)
 
         edit_btn = QPushButton('✏️ 修改')
         edit_btn.setObjectName("editButton")
         edit_btn.clicked.connect(lambda _, r=row: self.edit_clothing(r))
         button_layout.addWidget(edit_btn)
+
+        if is_discontinued:
+            reactivate_btn = QPushButton('🔄 启用')
+            reactivate_btn.setObjectName("reactivateButton")
+            reactivate_btn.clicked.connect(lambda _, r=row: self.reactivate_clothing(r))
+            button_layout.addWidget(reactivate_btn)
+        else:
+            discontinue_btn = QPushButton('⏹️ 停用')
+            discontinue_btn.setObjectName("discontinueButton")
+            discontinue_btn.clicked.connect(lambda _, r=row: self.discontinue_clothing(r))
+            button_layout.addWidget(discontinue_btn)
 
         delete_btn = QPushButton('🗑️ 删除')
         delete_btn.setObjectName("deleteButton")
@@ -1194,6 +1330,50 @@ class MainWindow(QMainWindow):
             self._apply_clothing_filters()
             self.update_clothing_stats()
             self.statusBar.showMessage('衣物删除成功', STATUS_MESSAGE_DURATION)
+
+    def discontinue_clothing(self, row: int) -> None:
+        """
+        停用衣物功能函数。
+
+        Args:
+            row: 要停用的行号。
+        """
+        item = self.clothing_manager.items[row]
+        dialog = DiscontinueDialog(self, item.get('name', '未命名'))
+        
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            discontinue_date = dialog.get_discontinue_date()
+            discontinue_reason = dialog.get_discontinue_reason()
+            
+            self.clothing_manager.discontinue_item(row, discontinue_date, discontinue_reason)
+            self._apply_clothing_filters()
+            self.update_clothing_stats()
+            self.statusBar.showMessage(
+                f'衣物已停用，原因：{discontinue_reason}',
+                STATUS_MESSAGE_DURATION
+            )
+
+    def reactivate_clothing(self, row: int) -> None:
+        """
+        重新启用衣物功能函数。
+
+        Args:
+            row: 要重新启用的行号。
+        """
+        item = self.clothing_manager.items[row]
+        reply = QMessageBox.question(
+            self,
+            '确认重新启用',
+            f'确定要重新启用衣物 "{item.get("name", "未命名")}" 吗？',
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+
+        if reply == QMessageBox.StandardButton.Yes:
+            self.clothing_manager.reactivate_item(row)
+            self._apply_clothing_filters()
+            self.update_clothing_stats()
+            self.statusBar.showMessage('衣物已重新启用', STATUS_MESSAGE_DURATION)
 
     def update_clothing_stats(self) -> None:
         """
@@ -1305,16 +1485,21 @@ class MainWindow(QMainWindow):
             item: 衣物数据字典。
             all_items: 完整衣物列表，用于查找原始索引。
         """
+        is_discontinued = item.get('status') == 'discontinued'
+        
         name_item = QTableWidgetItem(item.get('name', ''))
         name_item.setToolTip(f"衣物名称：{item.get('name', '')}")
+        if is_discontinued:
+            name_item.setForeground(Qt.GlobalColor.gray)
         self.clothing_table.setItem(row, 0, name_item)
 
-        # 为衣物类型创建标签样式的单元格
         type_widget = QWidget()
         type_layout = QHBoxLayout(type_widget)
         type_layout.setContentsMargins(4, 2, 4, 2)
         type_label = QLabel(item['clothing_type'])
         type_label.setObjectName("clothingTypeTag")
+        if is_discontinued:
+            type_label.setStyleSheet("color: gray;")
         type_layout.addWidget(type_label)
         type_layout.addStretch()
         self.clothing_table.setCellWidget(row, 1, type_widget)
@@ -1322,14 +1507,25 @@ class MainWindow(QMainWindow):
         price_item = QTableWidgetItem(f"¥{item['price']:.2f}")
         price_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         price_item.setData(Qt.ItemDataRole.UserRole, item['price'])
+        if is_discontinued:
+            price_item.setForeground(Qt.GlobalColor.gray)
         self.clothing_table.setItem(row, 2, price_item)
 
         date_item = QTableWidgetItem(item['purchase_date'])
+        if is_discontinued:
+            date_item.setForeground(Qt.GlobalColor.gray)
         self.clothing_table.setItem(row, 3, date_item)
 
+        status_text = '已停用' if is_discontinued else '使用中'
+        status_item = QTableWidgetItem(status_text)
+        status_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+        if is_discontinued:
+            status_item.setForeground(Qt.GlobalColor.gray)
+        self.clothing_table.setItem(row, 4, status_item)
+
         original_index = all_items.index(item)
-        button_widget = self._create_clothing_action_buttons(original_index)
-        self.clothing_table.setCellWidget(row, 4, button_widget)
+        button_widget = self._create_clothing_action_buttons(original_index, item)
+        self.clothing_table.setCellWidget(row, 5, button_widget)
 
     def handle_clothing_cell_click(self, row: int, column: int) -> None:
         """

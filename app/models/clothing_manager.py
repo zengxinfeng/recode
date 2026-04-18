@@ -6,11 +6,16 @@
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from PySide6.QtCore import QDate
 
 from app.utils.path_utils import get_clothing_file_path
+
+ClothingStatus = Literal['active', 'discontinued']
+DiscontinueReason = Literal['报废', '转卖', '闲置', '其他']
+
+DISCONTINUE_REASONS: list[DiscontinueReason] = ['报废', '转卖', '闲置', '其他']
 
 
 class ClothingManager:
@@ -73,6 +78,9 @@ class ClothingManager:
             'clothing_type': clothing_type,
             'price': float(price),
             'purchase_date': purchase_date.toString('yyyy-MM-dd'),
+            'status': 'active',
+            'discontinued_date': None,
+            'discontinued_reason': None,
         }
         self.items.append(item)
         self.save_data()
@@ -102,12 +110,51 @@ class ClothingManager:
             purchase_date: 新的购买日期（QDate 对象）。
         """
         if 0 <= index < len(self.items):
+            existing_item = self.items[index]
             self.items[index] = {
                 'name': name,
                 'clothing_type': clothing_type,
                 'price': float(price),
                 'purchase_date': purchase_date.toString('yyyy-MM-dd'),
+                'status': existing_item.get('status', 'active'),
+                'discontinued_date': existing_item.get('discontinued_date'),
+                'discontinued_reason': existing_item.get('discontinued_reason'),
             }
+            self.save_data()
+
+    def discontinue_item(
+        self,
+        index: int,
+        discontinued_date: QDate,
+        discontinued_reason: str,
+    ) -> None:
+        """
+        将衣物标记为已停用。
+
+        Args:
+            index: 要停用的衣物索引。
+            discontinued_date: 停用日期（QDate 对象）。
+            discontinued_reason: 停用原因。
+        """
+        if 0 <= index < len(self.items):
+            self.items[index]['status'] = 'discontinued'
+            self.items[index]['discontinued_date'] = discontinued_date.toString(
+                'yyyy-MM-dd'
+            )
+            self.items[index]['discontinued_reason'] = discontinued_reason
+            self.save_data()
+
+    def reactivate_item(self, index: int) -> None:
+        """
+        将已停用的衣物重新启用。
+
+        Args:
+            index: 要重新启用的衣物索引。
+        """
+        if 0 <= index < len(self.items):
+            self.items[index]['status'] = 'active'
+            self.items[index]['discontinued_date'] = None
+            self.items[index]['discontinued_reason'] = None
             self.save_data()
 
     def get_items(self) -> list[dict[str, Any]]:
