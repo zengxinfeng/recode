@@ -72,7 +72,9 @@ class FilterHeader(QHeaderView):
             rect: 绘制区域。
             logical_index: 逻辑列索引。
         """
+        painter.save()
         super().paintSection(painter, rect, logical_index)
+        painter.restore()
 
         if logical_index == self.FILTER_COLUMN:
             self._draw_filter_icon(painter, rect)

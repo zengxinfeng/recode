@@ -179,6 +179,26 @@ class ClothingManager:
                 types.add(item['clothing_type'])
         return sorted(list(types))
 
+    def calculate_days_used(self, item: dict[str, Any]) -> int:
+        """
+        计算衣物已使用天数。
+
+        Args:
+            item: 衣物字典。
+
+        Returns:
+            已使用天数（包含购买当天）。
+        """
+        purchase_date = QDate.fromString(item['purchase_date'], 'yyyy-MM-dd')
+
+        if item.get('status') == 'discontinued' and item.get('discontinued_date'):
+            end_date = QDate.fromString(item['discontinued_date'], 'yyyy-MM-dd')
+        else:
+            end_date = QDate.currentDate()
+
+        days_used = purchase_date.daysTo(end_date) + 1
+        return max(days_used, 1)
+
     def get_total_assets(self) -> float:
         """
         计算所有衣物的总资产。

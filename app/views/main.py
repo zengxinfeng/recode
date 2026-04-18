@@ -60,8 +60,6 @@ class MainWindow(QMainWindow):
         self.clothing_manager: ClothingManager = ClothingManager()
         self.item_management_widget: QWidget | None = None
         self.clothing_management_widget: QWidget | None = None
-        self.sort_states: dict[int, int] = {}
-        self.clothing_sort_states: dict[int, int] = {}
         self.clothing_type_filter_selected: list[str] | None = None
 
         self.load_styles()
@@ -461,15 +459,10 @@ class MainWindow(QMainWindow):
         self.table.verticalHeader().setDefaultSectionSize(TABLE_ROW_HEIGHT)
         self.table.verticalHeader().setVisible(False)
 
-        self.table.setSortingEnabled(True)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.table.setAlternatingRowColors(True)
 
         self.table.cellClicked.connect(self.handle_cell_click)
-        header.sectionClicked.connect(self.handle_header_click)
-
-        for i in range(7):
-            self.sort_states[i] = 0
 
         table_layout.addWidget(self.table)
         table_group.setLayout(table_layout)
@@ -496,33 +489,9 @@ class MainWindow(QMainWindow):
                 self.item_management_widget.hide()
             self.create_clothing_management_view()
             self.clothing_management_widget.show()
+            self._refresh_clothing_type_options()
             self._apply_clothing_filters()
             self.update_clothing_stats()
-
-    def handle_header_click(self, logical_index: int) -> None:
-        """
-        处理表头点击事件，实现点击第三下取消排序。
-
-        Args:
-            logical_index: 点击的列索引。
-        """
-        self.table.setSortingEnabled(False)
-
-        self.sort_states[logical_index] = (self.sort_states[logical_index] + 1) % 3
-
-        if self.sort_states[logical_index] == 0:
-            self.table.setSortingEnabled(True)
-            self.table.horizontalHeader().setSortIndicator(-1, Qt.AscendingOrder)
-            if self.search_input.text():
-                self.search_items()
-            else:
-                self.refresh_table()
-        elif self.sort_states[logical_index] == 1:
-            self.table.sortByColumn(logical_index, Qt.AscendingOrder)
-            self.table.setSortingEnabled(True)
-        else:
-            self.table.sortByColumn(logical_index, Qt.DescendingOrder)
-            self.table.setSortingEnabled(True)
 
     def add_item(self) -> None:
         """
@@ -566,19 +535,10 @@ class MainWindow(QMainWindow):
         """
         items = self.item_manager.get_items()
 
-        current_sort_column = self.table.horizontalHeader().sortIndicatorSection()
-        current_sort_order = self.table.horizontalHeader().sortIndicatorOrder()
-
-        self.table.setSortingEnabled(False)
         self.table.setRowCount(len(items))
 
         for row, item in enumerate(items):
             self._populate_table_row(row, item)
-
-        self.table.setSortingEnabled(True)
-
-        if current_sort_column != -1:
-            self.table.sortByColumn(current_sort_column, current_sort_order)
 
     def _populate_table_row(self, row: int, item: dict[str, Any]) -> None:
         """
@@ -782,19 +742,10 @@ class MainWindow(QMainWindow):
             item for item in items if search_text in item['name'].lower()
         ]
 
-        current_sort_column = self.table.horizontalHeader().sortIndicatorSection()
-        current_sort_order = self.table.horizontalHeader().sortIndicatorOrder()
-
-        self.table.setSortingEnabled(False)
         self.table.setRowCount(len(filtered_items))
 
         for row, item in enumerate(filtered_items):
             self._populate_search_table_row(row, item, items)
-
-        self.table.setSortingEnabled(True)
-
-        if current_sort_column != -1:
-            self.table.sortByColumn(current_sort_column, current_sort_order)
 
     def _populate_search_table_row(
         self, row: int, item: dict[str, Any], all_items: list[dict[str, Any]]
@@ -1020,8 +971,9 @@ class MainWindow(QMainWindow):
 
         type_label = QLabel('类型:')
         type_label.setObjectName("inputLabel")
-        self.clothing_type_input = QLineEdit()
-        self.clothing_type_input.setPlaceholderText('如：T恤、裤子、外套')
+        self.clothing_type_input = QComboBox()
+        self.clothing_type_input.setEditable(True)
+        self.clothing_type_input.lineEdit().setPlaceholderText('选择或输入类型')
         self.clothing_type_input.setMinimumWidth(120)
         input_layout.addWidget(type_label)
         input_layout.addWidget(self.clothing_type_input)
@@ -1089,9 +1041,9 @@ class MainWindow(QMainWindow):
 
         self.clothing_table = QTableWidget()
         self.clothing_table.setObjectName("clothingTable")
-        self.clothing_table.setColumnCount(6)
+        self.clothing_table.setColumnCount(7)
         self.clothing_table.setHorizontalHeaderLabels(
-            ['衣物名称', '衣物类型', '购买价格', '购买日期', '状态', '操作']
+            ['衣物名称', '衣物类型', '购买价格', '购买日期', '已使用天数', '状态', '操作']
         )
 
         self.clothing_filter_header = FilterHeader(self.clothing_table)
@@ -1105,55 +1057,22 @@ class MainWindow(QMainWindow):
         header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(4, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(5, QHeaderView.Fixed)
-        header.resizeSection(5, 300)
+        header.setSectionResizeMode(5, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(6, QHeaderView.Fixed)
+        header.resizeSection(6, 300)
 
         self.clothing_table.verticalHeader().setDefaultSectionSize(TABLE_ROW_HEIGHT)
         self.clothing_table.verticalHeader().setVisible(False)
 
-        self.clothing_table.setSortingEnabled(True)
         self.clothing_table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.clothing_table.setAlternatingRowColors(True)
 
         self.clothing_table.cellClicked.connect(self.handle_clothing_cell_click)
-        header.sectionClicked.connect(self.handle_clothing_header_click)
-
-        for i in range(6):
-            self.clothing_sort_states[i] = 0
 
         table_layout.addWidget(self.clothing_table)
         table_group.setLayout(table_layout)
 
         return table_group
-
-    def handle_clothing_header_click(self, logical_index: int) -> None:
-        """
-        处理衣物表头点击事件，实现点击第三下取消排序。
-
-        Args:
-            logical_index: 点击的列索引。
-        """
-        self.clothing_table.setSortingEnabled(False)
-
-        self.clothing_sort_states[logical_index] = (
-            self.clothing_sort_states[logical_index] + 1
-        ) % 3
-
-        if self.clothing_sort_states[logical_index] == 0:
-            self.clothing_table.setSortingEnabled(True)
-            self.clothing_table.horizontalHeader().setSortIndicator(
-                -1, Qt.AscendingOrder
-            )
-            if self.clothing_search_input.text():
-                self.search_clothing()
-            else:
-                self.refresh_clothing_table()
-        elif self.clothing_sort_states[logical_index] == 1:
-            self.clothing_table.sortByColumn(logical_index, Qt.AscendingOrder)
-            self.clothing_table.setSortingEnabled(True)
-        else:
-            self.clothing_table.sortByColumn(logical_index, Qt.DescendingOrder)
-            self.clothing_table.setSortingEnabled(True)
 
     def add_clothing(self) -> None:
         """
@@ -1185,14 +1104,28 @@ class MainWindow(QMainWindow):
             name, clothing_type, price, self.clothing_date_input.date()
         )
 
+        self._refresh_clothing_type_options()
         self._apply_clothing_filters()
         self.update_clothing_stats()
         self.statusBar.showMessage('衣物添加成功', STATUS_MESSAGE_DURATION)
 
         self.clothing_name_input.clear()
-        self.clothing_type_input.clear()
+        self.clothing_type_input.setCurrentText('')
         self.clothing_price_input.clear()
         self.clothing_date_input.setDate(QDate.currentDate())
+
+    def _refresh_clothing_type_options(self) -> None:
+        """
+        刷新衣物类型下拉选项列表。
+        """
+        all_types = self.clothing_manager.get_all_clothing_types()
+        current_text = self.clothing_type_input.currentText()
+
+        self.clothing_type_input.blockSignals(True)
+        self.clothing_type_input.clear()
+        self.clothing_type_input.addItems(all_types)
+        self.clothing_type_input.setCurrentText(current_text)
+        self.clothing_type_input.blockSignals(False)
 
     def refresh_clothing_table(self) -> None:
         """
@@ -1202,21 +1135,10 @@ class MainWindow(QMainWindow):
         """
         items = self.clothing_manager.get_items()
 
-        current_sort_column = (
-            self.clothing_table.horizontalHeader().sortIndicatorSection()
-        )
-        current_sort_order = self.clothing_table.horizontalHeader().sortIndicatorOrder()
-
-        self.clothing_table.setSortingEnabled(False)
         self.clothing_table.setRowCount(len(items))
 
         for row, item in enumerate(items):
             self._populate_clothing_table_row(row, item)
-
-        self.clothing_table.setSortingEnabled(True)
-
-        if current_sort_column != -1:
-            self.clothing_table.sortByColumn(current_sort_column, current_sort_order)
 
     def _populate_clothing_table_row(self, row: int, item: dict[str, Any]) -> None:
         """
@@ -1227,23 +1149,17 @@ class MainWindow(QMainWindow):
             item: 衣物数据字典。
         """
         is_discontinued = item.get('status') == 'discontinued'
-        
+
         name_item = QTableWidgetItem(item.get('name', ''))
         name_item.setToolTip(f"衣物名称：{item.get('name', '')}")
         if is_discontinued:
             name_item.setForeground(Qt.GlobalColor.gray)
         self.clothing_table.setItem(row, 0, name_item)
 
-        type_widget = QWidget()
-        type_layout = QHBoxLayout(type_widget)
-        type_layout.setContentsMargins(4, 2, 4, 2)
-        type_label = QLabel(item['clothing_type'])
-        type_label.setObjectName("clothingTypeTag")
+        type_item = QTableWidgetItem(item.get('clothing_type', ''))
         if is_discontinued:
-            type_label.setStyleSheet("color: gray;")
-        type_layout.addWidget(type_label)
-        type_layout.addStretch()
-        self.clothing_table.setCellWidget(row, 1, type_widget)
+            type_item.setForeground(Qt.GlobalColor.gray)
+        self.clothing_table.setItem(row, 1, type_item)
 
         price_item = QTableWidgetItem(f"¥{item['price']:.2f}")
         price_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
@@ -1257,15 +1173,23 @@ class MainWindow(QMainWindow):
             date_item.setForeground(Qt.GlobalColor.gray)
         self.clothing_table.setItem(row, 3, date_item)
 
+        days_used = self.clothing_manager.calculate_days_used(item)
+        days_item = QTableWidgetItem(str(days_used))
+        days_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+        days_item.setData(Qt.ItemDataRole.UserRole, days_used)
+        if is_discontinued:
+            days_item.setForeground(Qt.GlobalColor.gray)
+        self.clothing_table.setItem(row, 4, days_item)
+
         status_text = '已停用' if is_discontinued else '使用中'
         status_item = QTableWidgetItem(status_text)
         status_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
         if is_discontinued:
             status_item.setForeground(Qt.GlobalColor.gray)
-        self.clothing_table.setItem(row, 4, status_item)
+        self.clothing_table.setItem(row, 5, status_item)
 
         button_widget = self._create_clothing_action_buttons(row, item)
-        self.clothing_table.setCellWidget(row, 5, button_widget)
+        self.clothing_table.setCellWidget(row, 6, button_widget)
 
     def _create_clothing_action_buttons(self, row: int, item: Optional[dict[str, Any]] = None) -> QWidget:
         """
@@ -1402,21 +1326,10 @@ class MainWindow(QMainWindow):
             and (selected_types is None or item.get('clothing_type') in selected_types)
         ]
 
-        current_sort_column = (
-            self.clothing_table.horizontalHeader().sortIndicatorSection()
-        )
-        current_sort_order = self.clothing_table.horizontalHeader().sortIndicatorOrder()
-
-        self.clothing_table.setSortingEnabled(False)
         self.clothing_table.setRowCount(len(filtered_items))
 
         for row, item in enumerate(filtered_items):
             self._populate_filtered_clothing_table_row(row, item, items)
-
-        self.clothing_table.setSortingEnabled(True)
-
-        if current_sort_column != -1:
-            self.clothing_table.sortByColumn(current_sort_column, current_sort_order)
 
     def _show_type_filter(self, column: int) -> None:
         """
@@ -1486,23 +1399,17 @@ class MainWindow(QMainWindow):
             all_items: 完整衣物列表，用于查找原始索引。
         """
         is_discontinued = item.get('status') == 'discontinued'
-        
+
         name_item = QTableWidgetItem(item.get('name', ''))
         name_item.setToolTip(f"衣物名称：{item.get('name', '')}")
         if is_discontinued:
             name_item.setForeground(Qt.GlobalColor.gray)
         self.clothing_table.setItem(row, 0, name_item)
 
-        type_widget = QWidget()
-        type_layout = QHBoxLayout(type_widget)
-        type_layout.setContentsMargins(4, 2, 4, 2)
-        type_label = QLabel(item['clothing_type'])
-        type_label.setObjectName("clothingTypeTag")
+        type_item = QTableWidgetItem(item.get('clothing_type', ''))
         if is_discontinued:
-            type_label.setStyleSheet("color: gray;")
-        type_layout.addWidget(type_label)
-        type_layout.addStretch()
-        self.clothing_table.setCellWidget(row, 1, type_widget)
+            type_item.setForeground(Qt.GlobalColor.gray)
+        self.clothing_table.setItem(row, 1, type_item)
 
         price_item = QTableWidgetItem(f"¥{item['price']:.2f}")
         price_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
@@ -1516,16 +1423,24 @@ class MainWindow(QMainWindow):
             date_item.setForeground(Qt.GlobalColor.gray)
         self.clothing_table.setItem(row, 3, date_item)
 
+        days_used = self.clothing_manager.calculate_days_used(item)
+        days_item = QTableWidgetItem(str(days_used))
+        days_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+        days_item.setData(Qt.ItemDataRole.UserRole, days_used)
+        if is_discontinued:
+            days_item.setForeground(Qt.GlobalColor.gray)
+        self.clothing_table.setItem(row, 4, days_item)
+
         status_text = '已停用' if is_discontinued else '使用中'
         status_item = QTableWidgetItem(status_text)
         status_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
         if is_discontinued:
             status_item.setForeground(Qt.GlobalColor.gray)
-        self.clothing_table.setItem(row, 4, status_item)
+        self.clothing_table.setItem(row, 5, status_item)
 
         original_index = all_items.index(item)
         button_widget = self._create_clothing_action_buttons(original_index, item)
-        self.clothing_table.setCellWidget(row, 5, button_widget)
+        self.clothing_table.setCellWidget(row, 6, button_widget)
 
     def handle_clothing_cell_click(self, row: int, column: int) -> None:
         """
