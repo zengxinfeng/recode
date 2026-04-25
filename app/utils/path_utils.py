@@ -5,6 +5,19 @@
 """
 
 from pathlib import Path
+from typing import List
+
+
+STYLE_FILES: List[str] = [
+    "base.qss",
+    "buttons.qss",
+    "inputs.qss",
+    "table.qss",
+    "navigation.qss",
+    "dialogs.qss",
+    "calendar.qss",
+    "clothing.qss",
+]
 
 
 def get_app_root() -> Path:
@@ -57,24 +70,37 @@ def get_style_path() -> Path:
     return get_resource_path() / "styles"
 
 
-def get_main_style_path() -> Path:
+def get_style_file_paths() -> List[Path]:
     """
-    获取主样式文件路径。
+    获取所有样式文件路径列表。
 
     Returns:
-        主样式文件的 Path 对象。
+        样式文件路径的列表。
     """
-    return get_style_path() / "main.qss"
+    style_path = get_style_path()
+    return [style_path / filename for filename in STYLE_FILES]
 
 
-def get_dark_style_path() -> Path:
+def load_combined_styles() -> str:
     """
-    获取暗黑主题样式文件路径。
+    加载并合并所有样式文件内容。
 
     Returns:
-        暗黑主题样式文件的 Path 对象。
+        合并后的样式字符串。
     """
-    return get_style_path() / "dark.qss"
+    combined_styles: List[str] = []
+    style_path = get_style_path()
+
+    for filename in STYLE_FILES:
+        file_path = style_path / filename
+        if file_path.exists():
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    combined_styles.append(f.read())
+            except OSError as e:
+                print(f"加载样式文件 {filename} 失败: {e}")
+
+    return "\n\n".join(combined_styles)
 
 
 def get_clothing_file_path() -> Path:

@@ -1,0 +1,184 @@
+/* 输入框样式 */
+QLineEdit {
+    padding: 10px 14px;
+    border: 1px solid rgba(56, 189, 248, 0.2);
+    border-radius: 8px;
+    font-size: 13px;
+    background-color: rgba(30, 41, 59, 0.6);
+    color: #E2E8F0;
+    selection-background-color: #06B6D4;
+    selection-color: #0F172A;
+}
+
+QLineEdit:hover {
+    border-color: rgba(56, 189, 248, 0.4);
+    background-color: rgba(30, 41, 59, 0.8);
+}
+
+QLineEdit:focus {
+    border-color: #06B6D4;
+    background-color: rgba(30, 41, 59, 0.9);
+}
+
+QLineEdit::placeholder {
+    color: #64748B;
+}
+
+/* 日期选择器样式 */
+QDateEdit {
+    padding: 10px 14px;
+    padding-right: 32px;
+    border: 1px solid rgba(56, 189, 248, 0.2);
+    border-radius: 8px;
+    font-size: 13px;
+    background-color: rgba(30, 41, 59, 0.6);
+    color: #E2E8F0;
+}
+
+QDateEdit:hover {
+    border-color: rgba(56, 189, 248, 0.4);
+}
+
+QDateEdit:focus {
+    border-color: #06B6D4;
+}
+
+QDateEdit::drop-down {
+    border: none;
+    background-color: transparent;
+    width: 28px;
+}
+
+QDateEdit::down-arrow {
+    image: none;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 6px solid #22D3EE;
+    margin-right: 8px;
+}
+
+/* 日期输入框容器样式 */
+QWidget#dateInputContainer {
+    border: 1px solid rgba(56, 189, 248, 0.2);
+    border-radius: 8px;
+    background-color: rgba(30, 41, 59, 0.6);
+}
+
+QWidget#dateInputContainer:hover {
+    border-color: rgba(56, 189, 248, 0.4);
+    background-color: rgba(30, 41, 59, 0.8);
+}
+
+/* 日期输入框样式 */
+QLineEdit#dateInput {
+    padding: 10px 14px;
+    background-color: transparent;
+    border: none;
+    border-radius: 8px 0 0 8px;
+}
+
+QLineEdit#dateInput:hover {
+    background-color: transparent;
+}
+
+QLineEdit#dateInput:focus {
+    border-color: transparent;
+}
+
+/* 下拉菜单样式 */
+QComboBox {
+    background-color: rgba(30, 41, 59, 0.8);
+    color: #E2E8F0;
+    border: 1px solid rgba(56, 189, 248, 0.2);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 13px;
+}
+
+QComboBox:hover {
+    border-color: rgba(56, 189, 248, 0.4);
+}
+
+QComboBox::drop-down {
+    border: none;
+    width: 24px;
+}
+
+QComboBox QAbstractItemView {
+    background-color: #1E293B;
+    color: #E2E8F0;
+    selection-background-color: rgba(6, 182, 212, 0.2);
+    border: 1px solid rgba(56, 189, 248, 0.2);
+    border-radius: 8px;
+    padding: 4px;
+}
+
+/* 日历月份选择下拉框样式 */
+QComboBox#calendarMonthCombo {
+    background-color: rgba(30, 41, 59, 0.8);
+    color: #E2E8F0;
+    border: 1px solid rgba(56, 189, 248, 0.2);
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 13px;
+    min-height: 24px;
+}
+
+QComboBox#calendarMonthCombo:hover {
+    border-color: rgba(56, 189, 248, 0.4);
+}
+
+QComboBox#calendarMonthCombo QAbstractItemView {
+    background-color: #1E293B;
+    color: #E2E8F0;
+    border: 1px solid rgba(56, 189, 248, 0.2);
+    border-radius: 6px;
+    selection-background-color: rgba(6, 182, 212, 0.2);
+    selection-color: #22D3EE;
+    outline: none;
+    padding: 4px;
+}
+
+QComboBox#calendarMonthCombo QAbstractItemView::item {
+    padding: 5px 10px;
+    border-radius: 3px;
+}
+
+QComboBox#calendarMonthCombo QAbstractItemView::item:hover {
+    background-color: rgba(6, 182, 212, 0.15);
+}
+
+/* 日历年份选择下拉框样式 */
+QComboBox#calendarYearCombo {
+    background-color: rgba(30, 41, 59, 0.8);
+    color: #E2E8F0;
+    border: 1px solid rgba(56, 189, 248, 0.2);
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 13px;
+    min-height: 24px;
+}
+
+QComboBox#calendarYearCombo:hover {
+    border-color: rgba(56, 189, 248, 0.4);
+}
+
+QComboBox#calendarYearCombo QAbstractItemView {
+    background-color: #1E293B;
+    color: #E2E8F0;
+    border: 1px solid rgba(56, 189, 248, 0.2);
+    border-radius: 6px;
+    selection-background-color: rgba(6, 182, 212, 0.2);
+    selection-color: #22D3EE;
+    outline: none;
+    padding: 4px;
+}
+
+QComboBox#calendarYearCombo QAbstractItemView::item {
+    padding: 5px 10px;
+    border-radius: 3px;
+}
+
+QComboBox#calendarYearCombo QAbstractItemView::item:hover {
+    background-color: rgba(6, 182, 212, 0.15);
+}

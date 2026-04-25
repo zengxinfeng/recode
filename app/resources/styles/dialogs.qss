@@ -1,0 +1,79 @@
+/* 消息框样式 */
+QMessageBox {
+    background-color: #0F172A;
+}
+
+QMessageBox QLabel {
+    color: #E2E8F0;
+    font-size: 13px;
+}
+
+QMessageBox QPushButton {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 #3B82F6, stop:1 #2563EB);
+    color: white;
+    padding: 8px 24px;
+    border-radius: 6px;
+    min-width: 80px;
+}
+
+QMessageBox QPushButton:hover {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 #60A5FA, stop:1 #3B82F6);
+}
+
+/* 对话框样式 */
+QDialog {
+    background-color: #0F172A;
+    border: 1px solid rgba(56, 189, 248, 0.2);
+    border-radius: 12px;
+    padding: 16px 20px;
+}
+
+/* 对话框表单布局样式 */
+QDialog QFormLayout {
+    spacing: 14px;
+}
+
+/* 对话框按钮盒样式 */
+QDialogButtonBox QPushButton {
+    min-width: 80px;
+    padding: 8px 24px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    border: none;
+}
+
+QDialogButtonBox QPushButton[text="OK"] {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 #10B981, stop:1 #059669);
+    color: white;
+}
+
+QDialogButtonBox QPushButton[text="OK"]:hover {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 #34D399, stop:1 #10B981);
+}
+
+QDialogButtonBox QPushButton[text="OK"]:pressed {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 #059669, stop:1 #047857);
+}
+
+QDialogButtonBox QPushButton[text="Cancel"] {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 #475569, stop:1 #334155);
+    color: #CBD5E1;
+}
+
+QDialogButtonBox QPushButton[text="Cancel"]:hover {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 #64748B, stop:1 #475569);
+    color: white;
+}
+
+QDialogButtonBox QPushButton[text="Cancel"]:pressed {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 #334155, stop:1 #1E293B);
+}

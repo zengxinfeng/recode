@@ -1,7 +1,7 @@
 """
 主窗口模块。
 
-提供应用程序主窗口，负责主题管理、导航和视图切换。
+提供应用程序主窗口，负责导航和视图切换。
 """
 
 import ctypes
@@ -14,7 +14,6 @@ from PySide6.QtWidgets import (
     QListWidget,
     QListWidgetItem,
     QMainWindow,
-    QPushButton,
     QStatusBar,
     QVBoxLayout,
     QWidget,
@@ -22,7 +21,7 @@ from PySide6.QtWidgets import (
 
 from app.models.clothing_manager import ClothingManager
 from app.models.item_manager import ItemManager
-from app.utils.path_utils import get_dark_style_path, get_main_style_path
+from app.utils.path_utils import load_combined_styles
 from app.views.base_management_view import STATUS_MESSAGE_DURATION
 from app.views.clothing_management_view import ClothingManagementView
 from app.views.item_management_view import ItemManagementView
@@ -39,13 +38,12 @@ class MainWindow(QMainWindow):
     """
     应用程序主窗口。
 
-    负责主题管理、导航栏、状态栏和视图切换协调。
+    负责导航栏、状态栏和视图切换协调。
     """
 
     def __init__(self) -> None:
         """初始化主窗口。"""
         super().__init__()
-        self.current_theme: str = 'dark'
         self.item_manager: ItemManager = ItemManager()
         self.clothing_manager: ClothingManager = ClothingManager()
         self.item_view: Optional[ItemManagementView] = None
@@ -66,19 +64,9 @@ class MainWindow(QMainWindow):
 
     def load_styles(self) -> None:
         """加载和应用 QSS 样式。"""
-        style_path = (
-            get_main_style_path()
-            if self.current_theme == 'light'
-            else get_dark_style_path()
-        )
-
-        if style_path.exists():
-            try:
-                with open(style_path, 'r', encoding='utf-8') as f:
-                    style = f.read()
-                self.setStyleSheet(style)
-            except OSError as e:
-                print(f"加载样式文件失败: {e}")
+        style = load_combined_styles()
+        if style:
+            self.setStyleSheet(style)
 
         self.update_title_bar_color()
 
@@ -90,25 +78,15 @@ class MainWindow(QMainWindow):
         try:
             hwnd = int(self.winId())
             dwmwa_use_immersive_dark_mode = 20
-            value = 1 if self.current_theme == 'dark' else 0
 
             ctypes.windll.dwmapi.DwmSetWindowAttribute(
                 hwnd,
                 dwmwa_use_immersive_dark_mode,
-                ctypes.byref(ctypes.c_int(value)),
+                ctypes.byref(ctypes.c_int(1)),
                 ctypes.sizeof(ctypes.c_int),
             )
         except (AttributeError, OSError) as e:
             print(f"设置标题栏颜色失败: {e}")
-
-    def toggle_theme(self) -> None:
-        """切换主题。"""
-        self.current_theme = 'dark' if self.current_theme == 'light' else 'light'
-        self.load_styles()
-        theme_name = "暗黑" if self.current_theme == "dark" else "明亮"
-        self.statusBar.showMessage(
-            f'已切换到{theme_name}主题', STATUS_MESSAGE_DURATION
-        )
 
     def init_ui(self) -> None:
         """初始化用户界面。"""
@@ -187,11 +165,6 @@ class MainWindow(QMainWindow):
         self.nav_list.setCurrentRow(0)
         self.nav_list.itemClicked.connect(self.switch_view)
         nav_layout.addWidget(self.nav_list)
-
-        theme_button = QPushButton('🌓 切换主题')
-        theme_button.setObjectName("themeButton")
-        theme_button.clicked.connect(self.toggle_theme)
-        nav_layout.addWidget(theme_button)
 
         return nav_widget
 
