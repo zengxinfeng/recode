@@ -52,6 +52,8 @@ class BaseManagementView(QWidget):
         self.search_input: Optional[QLineEdit] = None
         self.table: Optional[QTableWidget] = None
         self._stat_labels: dict[str, QLabel] = {}
+        self._sort_column: int = -1
+        self._sort_order: int = 0
         self._setup_ui()
 
     def set_status_bar(self, status_bar: QStatusBar) -> None:
@@ -69,6 +71,7 @@ class BaseManagementView(QWidget):
         self.table.setRowCount(len(items))
         for row, item in enumerate(items):
             self._populate_table_row(row, item, row)
+        self._apply_sort()
 
     def show_view(self) -> None:
         """显示视图并刷新数据。"""
@@ -136,6 +139,72 @@ class BaseManagementView(QWidget):
     def _get_table_group_title(self) -> str:
         """获取表格分组标题。"""
         return '📋 列表'
+
+    def _get_sortable_columns(self) -> list[int]:
+        """获取可排序的列索引列表。子类可重写以指定哪些列可排序。"""
+        return []
+
+    def _setup_sorting(self) -> None:
+        """初始化排序功能。"""
+        header = self.table.horizontalHeader()
+        header.setSectionsClickable(True)
+        header.sectionClicked.connect(self._on_header_clicked)
+
+    def _on_header_clicked(self, column: int) -> None:
+        """
+        处理表头点击事件。
+
+        Args:
+            column: 点击的列索引。
+        """
+        sortable_columns = self._get_sortable_columns()
+        if column not in sortable_columns:
+            return
+
+        if self._sort_column == column:
+            self._sort_order = (self._sort_order + 1) % 3
+            if self._sort_order == 0:
+                self._sort_column = -1
+        else:
+            self._sort_column = column
+            self._sort_order = 1
+
+        self._update_header_indicator()
+        self._apply_sort()
+
+    def _update_header_indicator(self) -> None:
+        """更新表头排序指示器。"""
+        headers = self._get_table_headers()
+        sortable_columns = self._get_sortable_columns()
+
+        for col in range(len(headers)):
+            header_item = self.table.horizontalHeaderItem(col)
+            if header_item is None:
+                continue
+
+            base_text = headers[col]
+
+            if col == self._sort_column and col in sortable_columns:
+                if self._sort_order == 1:
+                    header_item.setText(f"{base_text} ↑")
+                elif self._sort_order == 2:
+                    header_item.setText(f"{base_text} ↓")
+                else:
+                    header_item.setText(base_text)
+            else:
+                header_item.setText(base_text)
+
+    def _apply_sort(self) -> None:
+        """应用当前排序状态。"""
+        if self._sort_column == -1 or self._sort_order == 0:
+            return
+
+        if self._sort_order == 1:
+            order = Qt.SortOrder.AscendingOrder
+        else:
+            order = Qt.SortOrder.DescendingOrder
+
+        self.table.sortItems(self._sort_column, order)
 
     def _create_stats_group(self) -> QGroupBox:
         """创建统计信息分组。"""
@@ -261,6 +330,7 @@ class BaseManagementView(QWidget):
             if search_text in item.get('name', '').lower()
         ]
         self._populate_filtered_table(filtered, items)
+        self._apply_sort()
 
     def _populate_filtered_table(
         self,
@@ -306,6 +376,7 @@ class BaseManagementView(QWidget):
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.table.setAlternatingRowColors(True)
         self.table.cellClicked.connect(self._handle_cell_click)
+        self._setup_sorting()
 
     def _handle_cell_click(self, row: int, column: int) -> None:
         """
