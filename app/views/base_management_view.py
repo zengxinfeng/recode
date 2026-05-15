@@ -219,23 +219,17 @@ class BaseManagementView(QWidget):
         else:
             row_indices.sort(key=lambda x: x[0] if isinstance(x[0], (int, float)) else str(x[0]), reverse=True)
 
-        items_data = []
-        for row in range(row_count):
-            row_items = []
-            for col in range(self.table.columnCount()):
-                item = self.table.item(row, col)
-                widget = self.table.cellWidget(row, col)
-                row_items.append((item, widget))
-            items_data.append(row_items)
-
-        self.table.setRowCount(0)
-        for sorted_idx, (_, original_idx) in enumerate(row_indices):
-            self.table.insertRow(sorted_idx)
-            for col, (item, widget) in enumerate(items_data[original_idx]):
-                if item is not None:
-                    self.table.setItem(sorted_idx, col, item)
-                if widget is not None:
-                    self.table.setCellWidget(sorted_idx, col, widget)
+        for target_row, (_, source_row) in enumerate(row_indices):
+            if target_row != source_row:
+                self.table.insertRow(target_row)
+                for col in range(self.table.columnCount()):
+                    item = self.table.takeItem(source_row + 1, col)
+                    if item is not None:
+                        self.table.setItem(target_row, col, item)
+                    widget = self.table.cellWidget(source_row + 1, col)
+                    if widget is not None:
+                        self.table.setCellWidget(target_row, col, widget)
+                self.table.removeRow(source_row + 1)
 
     def _create_stats_group(self) -> QGroupBox:
         """创建统计信息分组。"""
