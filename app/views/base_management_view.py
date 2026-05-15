@@ -174,7 +174,7 @@ class BaseManagementView(QWidget):
             self._sort_order = 1
 
         self._update_header_indicator()
-        self._apply_sort()
+        self._apply_filters()
 
     def _update_header_indicator(self) -> None:
         """更新表头排序指示器。"""
@@ -197,10 +197,6 @@ class BaseManagementView(QWidget):
                     header_item.setText(base_text)
             else:
                 header_item.setText(base_text)
-
-    def _apply_sort(self) -> None:
-        """应用当前排序状态（更新表头指示器）。"""
-        self._update_header_indicator()
 
     def _sort_items(self, items: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """
