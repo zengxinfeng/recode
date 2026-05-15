@@ -68,10 +68,14 @@ class BaseManagementView(QWidget):
     def refresh_table(self) -> None:
         """刷新表格显示全部数据。"""
         items = self.manager.get_items()
+        
+        if self._sort_column != -1 and self._sort_order != 0:
+            items = self._sort_items(items)
+        
         self.table.setRowCount(len(items))
         for row, item in enumerate(items):
-            self._populate_table_row(row, item, row)
-        self._apply_sort()
+            original_index = self.manager.get_items().index(item)
+            self._populate_table_row(row, item, original_index)
 
     def show_view(self) -> None:
         """显示视图并刷新数据。"""
@@ -195,41 +199,42 @@ class BaseManagementView(QWidget):
                 header_item.setText(base_text)
 
     def _apply_sort(self) -> None:
-        """应用当前排序状态。"""
+        """应用当前排序状态（更新表头指示器）。"""
+        self._update_header_indicator()
+
+    def _sort_items(self, items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """
+        对项目列表进行排序。
+
+        Args:
+            items: 要排序的项目列表。
+
+        Returns:
+            排序后的项目列表。
+        """
         if self._sort_column == -1 or self._sort_order == 0:
-            return
+            return items
 
-        row_count = self.table.rowCount()
-        if row_count == 0:
-            return
-
-        row_indices = []
-        for row in range(row_count):
-            item = self.table.item(row, self._sort_column)
-            if item is not None:
-                sort_value = item.data(Qt.ItemDataRole.UserRole)
-                if sort_value is None:
-                    sort_value = item.text()
+        def get_sort_value(item: dict[str, Any]) -> Any:
+            """获取项目的排序值。"""
+            headers = self._get_table_headers()
+            col_name = headers[self._sort_column]
+            
+            if col_name in ['购买价格', '价格']:
+                return item.get('price', 0)
+            elif col_name == '日均使用价格':
+                return self.manager.calculate_daily_cost(item)
+            elif col_name == '已使用天数':
+                return self.manager.calculate_days_used(item)
             else:
-                sort_value = ""
-            row_indices.append((sort_value, row))
+                return item.get(col_name, '')
 
-        if self._sort_order == 1:
-            row_indices.sort(key=lambda x: x[0] if isinstance(x[0], (int, float)) else str(x[0]))
-        else:
-            row_indices.sort(key=lambda x: x[0] if isinstance(x[0], (int, float)) else str(x[0]), reverse=True)
-
-        for target_row, (_, source_row) in enumerate(row_indices):
-            if target_row != source_row:
-                self.table.insertRow(target_row)
-                for col in range(self.table.columnCount()):
-                    item = self.table.takeItem(source_row + 1, col)
-                    if item is not None:
-                        self.table.setItem(target_row, col, item)
-                    widget = self.table.cellWidget(source_row + 1, col)
-                    if widget is not None:
-                        self.table.setCellWidget(target_row, col, widget)
-                self.table.removeRow(source_row + 1)
+        sorted_items = sorted(items, key=get_sort_value)
+        
+        if self._sort_order == 2:
+            sorted_items = list(reversed(sorted_items))
+        
+        return sorted_items
 
     def _create_stats_group(self) -> QGroupBox:
         """创建统计信息分组。"""
@@ -354,8 +359,11 @@ class BaseManagementView(QWidget):
             item for item in items
             if search_text in item.get('name', '').lower()
         ]
+        
+        if self._sort_column != -1 and self._sort_order != 0:
+            filtered = self._sort_items(filtered)
+        
         self._populate_filtered_table(filtered, items)
-        self._apply_sort()
 
     def _populate_filtered_table(
         self,
