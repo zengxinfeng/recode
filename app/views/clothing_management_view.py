@@ -205,6 +205,9 @@ class ClothingManagementView(BaseManagementView):
                  or item.get('clothing_type') in selected_types)
         ]
 
+        if self._sort_column != -1 and self._sort_order != 0:
+            filtered_items = self._sort_items(filtered_items)
+
         self._populate_filtered_table(filtered_items, items)
 
     def _populate_table_row(
