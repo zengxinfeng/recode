@@ -115,6 +115,10 @@ class ClothingManagementView(BaseManagementView):
         """获取项目类型名称。"""
         return '衣物'
 
+    def _get_sortable_columns(self) -> list[int]:
+        """获取可排序的列索引列表。"""
+        return [2]
+
     def _create_input_group(self) -> QGroupBox:
         """创建输入区域。"""
         input_group = QGroupBox('👕 添加衣物')

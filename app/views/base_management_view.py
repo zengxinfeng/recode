@@ -199,12 +199,43 @@ class BaseManagementView(QWidget):
         if self._sort_column == -1 or self._sort_order == 0:
             return
 
-        if self._sort_order == 1:
-            order = Qt.SortOrder.AscendingOrder
-        else:
-            order = Qt.SortOrder.DescendingOrder
+        row_count = self.table.rowCount()
+        if row_count == 0:
+            return
 
-        self.table.sortItems(self._sort_column, order)
+        row_indices = []
+        for row in range(row_count):
+            item = self.table.item(row, self._sort_column)
+            if item is not None:
+                sort_value = item.data(Qt.ItemDataRole.UserRole)
+                if sort_value is None:
+                    sort_value = item.text()
+            else:
+                sort_value = ""
+            row_indices.append((sort_value, row))
+
+        if self._sort_order == 1:
+            row_indices.sort(key=lambda x: x[0] if isinstance(x[0], (int, float)) else str(x[0]))
+        else:
+            row_indices.sort(key=lambda x: x[0] if isinstance(x[0], (int, float)) else str(x[0]), reverse=True)
+
+        items_data = []
+        for row in range(row_count):
+            row_items = []
+            for col in range(self.table.columnCount()):
+                item = self.table.item(row, col)
+                widget = self.table.cellWidget(row, col)
+                row_items.append((item, widget))
+            items_data.append(row_items)
+
+        self.table.setRowCount(0)
+        for sorted_idx, (_, original_idx) in enumerate(row_indices):
+            self.table.insertRow(sorted_idx)
+            for col, (item, widget) in enumerate(items_data[original_idx]):
+                if item is not None:
+                    self.table.setItem(sorted_idx, col, item)
+                if widget is not None:
+                    self.table.setCellWidget(sorted_idx, col, widget)
 
     def _create_stats_group(self) -> QGroupBox:
         """创建统计信息分组。"""
