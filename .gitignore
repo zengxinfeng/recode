@@ -128,3 +128,5 @@ app/resources/datas/
 temp.py
 .trae/
 docs/
+.agents/
+design/
